@@ -1,0 +1,13 @@
+<!-- search.html -->
+<!--done with htmx-->
+
+{% for result in results %}
+    <tr>
+        <td>{{ result.artist_name }}</td>
+        <td>{{ result.track_name }}</td>
+        <td>{{ result.year }}</td>
+        <td>{{ result.genre }}</td>
+        <td>{{ result.duration_in_minutes_seconds() }}</td>
+    </tr>
+{% endfor %}
+

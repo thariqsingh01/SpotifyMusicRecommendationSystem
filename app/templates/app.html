@@ -1,0 +1,65 @@
+<!--app.html-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recommendify</title>
+    <link rel="stylesheet" href="../static/css/app.css">
+    <script src="https://unpkg.com/htmx.org@2.0.1"></script>
+</head>
+<body>
+    <div>
+        <ul class="navbar">
+            <li id="logo"><img src="../static/images/Spotify_Icon_RGB_Green.png" alt="Spotify Logo"></li>
+            <li id="logotext"><h4>Recommendify</h4></li>
+        </ul>
+    </div>
+    
+    <div class="spacer"></div> 
+
+    <section class="search">
+        <div class="columns">
+            <div class="column is-one-third is-offset-one-third">
+                <!--htmx below-->
+                <input type="text" class="input" placeholder="Search" name="q" hx-get="/search" hx-trigger="keyup changed delay:500ms" hx-target="#results" onkeyup="console.log('Keyup event triggered')">
+                <button class="button" id="add-button">Add</button>
+                <button class="button" id="search-button">Search</button>
+            </div>
+        </div>
+    
+        <table class="search_table" style="align-items: center;">
+            <thead>
+                <tr>
+                    <th>Artist</th>
+                    <th>Song Name</th>
+                    <th>Year</th>
+                    <th>Genre</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody id="results">
+                <!-- Results will be loaded here dynamically via htmx-->
+            </tbody>
+        </table>
+
+        <!-- New table for user-added choices -->
+        <div class="spacer"></div> 
+        
+        <h2>Your Choices</h2>
+        <table class="choices_table" style="align-items: center;">
+            <thead>
+                <tr>
+                    <th>Song Name</th>
+                    <th>Artist</th>
+                    <th>Remove</th>
+                </tr>
+            </thead>
+            <tbody id="choices">
+                <!-- User-added choices will be loaded here -->
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>
