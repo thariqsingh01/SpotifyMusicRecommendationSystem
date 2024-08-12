@@ -1,3 +1,5 @@
+#main.py
+
 from flask import Blueprint, render_template, request
 from . import db
 
@@ -44,7 +46,7 @@ def search():
             (SpotifyData.track_name.ilike(f"%{query}%")) |
             (SpotifyData.year.ilike(f"%{query}%")) |
             (SpotifyData.genre.ilike(f"%{query}%"))
-        ).order_by(SpotifyData.popularity.desc()).limit(6).all()
+        ).order_by(SpotifyData.popularity.desc()).limit(20).all()
     else:
         results = []
     return render_template('search.html', results=results)

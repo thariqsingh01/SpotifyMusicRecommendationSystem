@@ -99,13 +99,31 @@ body {
 }
 
 /* Table */
-.search_table {
-  width: 90%;
-  margin: 0 auto;
+/* Container for scrollable table body */
+.search_table-container {
+  max-height: 300px; /* Adjust height to fit 6 rows */
+  overflow-y: auto;  /* Enable vertical scrolling */
+  width: 90%;        /* Ensure the container width matches the tables */
+  margin: 0 auto;   /* Center the container */
   border-collapse: collapse;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Make sure the table width is consistent */
+.search_table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Fixed header styles */
+.search_table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #333;
+  color: white;
+  z-index: 1; /* Ensure the header is above the scrollable body */
+}
+
+/* Table cell styling */
 .search_table th, .search_table td {
   border: 1px solid #ddd;
   padding: 12px;
@@ -115,7 +133,6 @@ body {
 .search_table th {
   background-color: #333;
   color: white;
-  text-align: left;
 }
 
 .search_table tr:nth-child(even) {
@@ -130,7 +147,6 @@ body {
   text-align: left;
 }
 
-/* Specific column widths */
 .search_table th:nth-child(1), 
 .search_table td:nth-child(1) {
   width: 25%;
@@ -138,12 +154,12 @@ body {
 
 .search_table th:nth-child(2), 
 .search_table td:nth-child(2) {
-  width: 25%; /* Adjust this value as needed */
+  width: 25%;
 }
 
 .search_table th:nth-child(3), 
 .search_table td:nth-child(3) {
-  width: 10%; /* Adjust this value as needed */
+  width: 10%;
 }
 
 .search_table th:nth-child(4), 
@@ -156,10 +172,7 @@ body {
   width: 15%;
 }
 
-.search_table th:nth-child(6), 
-.search_table td:nth-child(6) {
-  width: 15%;
-}
+
 
 /* Choices Table */
 .choices_table {
@@ -220,4 +233,62 @@ h2 {
   margin-top: 20px;
   font-size: 1.5em;
   color: #333;
+}
+
+/* Add styles for the suggestions table */
+.suggestions_table {
+  width: 90%;
+  margin: 0 auto;
+  border-collapse: collapse;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 20px; /* Add space above the new table */
+}
+
+.suggestions_table th, .suggestions_table td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+}
+
+.suggestions_table th {
+  background-color: #333;
+  color: white;
+}
+
+.suggestions_table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.suggestions_table tr:hover {
+  background-color: #f1f1f1;
+}
+
+.suggestions_table td {
+  text-align: left;
+}
+
+/* Equal column widths for the suggestions table */
+.suggestions_table th:nth-child(1), 
+.suggestions_table td:nth-child(1) {
+  width: 25%;
+}
+
+.suggestions_table th:nth-child(2), 
+.suggestions_table td:nth-child(2) {
+  width: 25%;
+}
+
+.suggestions_table th:nth-child(3), 
+.suggestions_table td:nth-child(3) {
+  width: 10%;
+}
+
+.suggestions_table th:nth-child(4), 
+.suggestions_table td:nth-child(4) {
+  width: 10%;
+}
+
+.suggestions_table th:nth-child(5), 
+.suggestions_table td:nth-child(5) {
+  width: 15%;
 }

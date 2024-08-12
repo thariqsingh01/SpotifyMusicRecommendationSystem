@@ -29,7 +29,30 @@
             </div>
         </div>
     
-        <table class="search_table" style="align-items: center;">
+        <!-- Search Table -->
+        <div class="search_table-container">
+            <table class="search_table" style="align-items: center;">
+                <thead>
+                    <tr>
+                        <th>Artist</th>
+                        <th>Song Name</th>
+                        <th>Year</th>
+                        <th>Genre</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody id="results">
+            <!-- Results will be loaded here dynamically via htmx-->
+                </tbody>
+            </table>
+        </div>
+
+
+        <!-- New table for suggestions -->
+        <div class="spacer"></div>
+        
+        <h2>Suggestions</h2>
+        <table class="suggestions_table" style="align-items: center;">
             <thead>
                 <tr>
                     <th>Artist</th>
@@ -39,8 +62,8 @@
                     <th>Duration</th>
                 </tr>
             </thead>
-            <tbody id="results">
-                <!-- Results will be loaded here dynamically via htmx-->
+            <tbody id="suggestions">
+                <!-- Suggestions will be loaded here -->
             </tbody>
         </table>
 
@@ -63,3 +86,4 @@
     </section>
 </body>
 </html>
+
