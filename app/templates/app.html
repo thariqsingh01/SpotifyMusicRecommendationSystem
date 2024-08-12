@@ -8,6 +8,53 @@
     <title>Recommendify</title>
     <link rel="stylesheet" href="../static/css/app.css">
     <script src="https://unpkg.com/htmx.org@2.0.1"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let selectedRow = null;
+
+            // Add click event listener to rows in the search table
+            document.querySelector('#results').addEventListener('click', function(event) {
+                if (event.target.tagName === 'TD') {
+                    if (selectedRow) {
+                        selectedRow.classList.remove('selected');
+                    }
+                    selectedRow = event.target.parentElement;
+                    selectedRow.classList.add('selected');
+                }
+            });
+
+            // Add click event listener to the Add button
+            document.querySelector('#add-button').addEventListener('click', function() {
+                if (selectedRow) {
+                    const cells = selectedRow.getElementsByTagName('td');
+                    const artist = cells[0].textContent;
+                    const songName = cells[1].textContent;
+                    const year = cells[2].textContent;
+                    const genre = cells[3].textContent;
+                    const duration = cells[4].textContent;
+
+                    const tableBody = document.querySelector('#choices');
+                    const newRow = document.createElement('tr');
+                    
+                    newRow.innerHTML = `
+                        <td>${songName}</td>
+                        <td>${artist}</td>
+                        <td><img src="../static/images/bin.png" class="bin-icon" onclick="removeRow(this)"></td>
+                    `;
+                    
+                    tableBody.appendChild(newRow);
+
+                    // Remove selection after adding to choices
+                    selectedRow.classList.remove('selected');
+                    selectedRow = null;
+                }
+            });
+        });
+
+        function removeRow(icon) {
+            icon.parentElement.parentElement.remove();
+        }
+    </script>
 </head>
 <body>
     <div>
@@ -29,9 +76,8 @@
             </div>
         </div>
     
-        <!-- Search Table -->
         <div class="search_table-container">
-            <table class="search_table" style="align-items: center;">
+            <table class="search_table">
                 <thead>
                     <tr>
                         <th>Artist</th>
@@ -42,11 +88,10 @@
                     </tr>
                 </thead>
                 <tbody id="results">
-            <!-- Results will be loaded here dynamically via htmx-->
+                    <!-- Results will be loaded here dynamically via htmx-->
                 </tbody>
             </table>
         </div>
-
 
         <!-- New table for suggestions -->
         <div class="spacer"></div>
@@ -86,4 +131,3 @@
     </section>
 </body>
 </html>
-

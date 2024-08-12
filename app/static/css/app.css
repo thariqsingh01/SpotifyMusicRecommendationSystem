@@ -99,22 +99,20 @@ body {
 }
 
 /* Table */
-/* Container for scrollable table body */
+/* Make search_table scrollable */
 .search_table-container {
   max-height: 300px; /* Adjust height to fit 6 rows */
   overflow-y: auto;  /* Enable vertical scrolling */
   width: 90%;        /* Ensure the container width matches the tables */
   margin: 0 auto;   /* Center the container */
-  border-collapse: collapse;
 }
 
-/* Make sure the table width is consistent */
+/* Table styling */
 .search_table {
   width: 100%;
   border-collapse: collapse;
 }
 
-/* Fixed header styles */
 .search_table thead th {
   position: sticky;
   top: 0;
@@ -123,7 +121,6 @@ body {
   z-index: 1; /* Ensure the header is above the scrollable body */
 }
 
-/* Table cell styling */
 .search_table th, .search_table td {
   border: 1px solid #ddd;
   padding: 12px;
@@ -147,32 +144,20 @@ body {
   text-align: left;
 }
 
-.search_table th:nth-child(1), 
-.search_table td:nth-child(1) {
-  width: 25%;
+/* Highlighted row */
+.search_table tr.selected {
+  background-color: #1DB954;
+  color: white;
 }
 
-.search_table th:nth-child(2), 
-.search_table td:nth-child(2) {
-  width: 25%;
+/* Bin icon styling */
+.bin-icon {
+  cursor: pointer;
+  color: red;
+  font-size: 1em; /* Decrease size of the bin icon */
+  width: 20px; /* Set width to decrease row height */
+  height: auto; /* Maintain aspect ratio */
 }
-
-.search_table th:nth-child(3), 
-.search_table td:nth-child(3) {
-  width: 10%;
-}
-
-.search_table th:nth-child(4), 
-.search_table td:nth-child(4) {
-  width: 10%;
-}
-
-.search_table th:nth-child(5), 
-.search_table td:nth-child(5) {
-  width: 15%;
-}
-
-
 
 /* Choices Table */
 .choices_table {
