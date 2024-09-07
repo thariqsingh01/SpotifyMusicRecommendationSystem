@@ -1,7 +1,12 @@
 #main.py
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, redirect, url_for
 from . import db
+from clustering.kmeans import perform_kmeans_clustering
+from clustering.dbscan import perform_dbscan_clustering
+from clustering.agglomerative import perform_agglomerative_clustering
+import pandas as pd
+from app.main import SpotifyData
 
 bp = Blueprint('main', __name__)
 
@@ -27,6 +32,9 @@ class SpotifyData(db.Model):
     tempo = db.Column(db.Float)
     duration_ms = db.Column(db.Integer)
     time_signature = db.Column(db.Integer)
+    kmeans = db.Column(db.Integer) 
+    dbscan = db.Column(db.Integer)  
+    agglomerative = db.Column(db.Integer)  
 
     def duration_in_minutes_seconds(self):
         if self.duration_ms:
@@ -54,3 +62,12 @@ def search():
 @bp.route('/')
 def home():
     return render_template("app.html")
+
+def initialize_clustering():
+    perform_kmeans_clustering()
+    perform_dbscan_clustering()
+    perform_agglomerative_clustering()
+
+@bp.before_first_request
+def before_first_request():
+    initialize_clustering()
