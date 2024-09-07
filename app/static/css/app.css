@@ -18,11 +18,37 @@ body {
   height: 60px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
 .navbar li {
   display: inline-block;
   margin-right: 20px;
+}
+
+.nav-links-container {
+  display: flex;
+  align-items: center;
+}
+
+.nav-links {
+  margin-left: 20px;
+}
+
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  padding: 0 15px;
+  font-size: 1rem;
+}
+
+.nav-links a:hover {
+  text-decoration: underline;
+}
+
+#logo-container {
+  display: flex;
+  align-items: center;
 }
 
 #logo img {
@@ -32,11 +58,9 @@ body {
 }
 
 #logotext {
-  display: inline-block;
   color: white;
   text-align: center;
   padding-left: 10px;
-  vertical-align: middle;
   font-family: sans-serif;
   font-size: 1.5rem;
 }
