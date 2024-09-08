@@ -36,3 +36,4 @@ class SpotifyData(db.Model):
             return f"{minutes} min {seconds} sec"
         else:
             return None
+        

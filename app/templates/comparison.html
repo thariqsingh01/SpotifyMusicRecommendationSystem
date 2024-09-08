@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clustering Comparison</title>
+    <link rel="stylesheet" href="../static/css/app.css">
+</head>
+<body>
+    <h1>Clustering Comparison</h1>
+    
+    <h2>K-Means Clustering Recommendations</h2>
+    <div>
+        {{ top_kmeans_html | safe }}
+    </div>
+
+    <h2>DBSCAN Clustering Recommendations</h2>
+    <div>
+        {{ top_dbscan_html | safe }}
+    </div>
+
+    <h2>Agglomerative Clustering Recommendations</h2>
+    <div>
+        {{ top_agglomerative_html | safe }}
+    </div>
+
+</body>
+</html>

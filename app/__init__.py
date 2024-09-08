@@ -3,13 +3,14 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import urllib
+from .models import SpotifyData
 
 db = SQLAlchemy()
 
 def create_app():
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'mssql+pyodbc:///?odbc_connect=' + urllib.parse.quote_plus(
-        'DRIVER={ODBC Driver 17 for SQL Server};SERVER=MSCS\SQLEXPRESS;DATABASE=Spotify;Trusted_Connection=yes;')
+        'DRIVER={ODBC Driver 17 for SQL Server};SERVER=MSCS\\SQLEXPRESS;DATABASE=Spotify;Trusted_Connection=yes;')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_ECHO'] = True
 
