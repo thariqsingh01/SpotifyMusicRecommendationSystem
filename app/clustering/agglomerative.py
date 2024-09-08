@@ -1,7 +1,9 @@
+#agglomerative.py
+
 import pandas as pd
 from sklearn.cluster import AgglomerativeClustering
 from app import db
-from app.main import SpotifyData
+from app.models import SpotifyData
 
 def perform_agglomerative_clustering():
     # Query all data
@@ -16,6 +18,6 @@ def perform_agglomerative_clustering():
 
     # Save cluster labels to the database
     for i, song in enumerate(data):
-        song.agglomerative_label = labels[i]
+        song.agglomerative = labels[i]
         db.session.add(song)
     db.session.commit()

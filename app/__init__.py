@@ -3,7 +3,6 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import urllib
-from .models import SpotifyData
 
 db = SQLAlchemy()
 
@@ -17,7 +16,7 @@ def create_app():
     db.init_app(app)
 
     with app.app_context():
-        from . import main
+        from .main import bp as main_bp
         app.register_blueprint(main.bp)
 
         # Optional: Create tables if not exist
