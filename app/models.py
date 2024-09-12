@@ -2,8 +2,8 @@
 
 from . import db
 
-class SpotifyData(db.Model):
-    __tablename__ = 'spotify_data'
+class Spotify(db.Model):
+    __tablename__ = 'Spotify'
     number = db.Column(db.Integer, primary_key=True)
     artist_name = db.Column(db.String)
     track_name = db.Column(db.String)

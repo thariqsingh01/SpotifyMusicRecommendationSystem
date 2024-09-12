@@ -34,8 +34,8 @@ def initialize_clustering():
     perform_dbscan_clustering()
     perform_agglomerative_clustering()
 
-@bp.before_first_request
-def before_first_request():
+@bp.before_app_request
+def before_app_request():
     initialize_clustering()
 
 @bp.route('/comparison')

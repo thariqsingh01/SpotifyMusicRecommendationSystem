@@ -6,10 +6,6 @@ from app import db
 from app.models import SpotifyData
 
 def perform_kmeans_clustering():
-    print("Function executed")
-
-
-def perform_kmeans_clustering():
     # Query all data
     data = SpotifyData.query.all()
     
