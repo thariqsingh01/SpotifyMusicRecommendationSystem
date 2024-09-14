@@ -1,12 +1,12 @@
 #main.py
 
-from flask import Blueprint, render_template, request, redirect, url_for
-from . import db
+from flask import Blueprint, render_template, request
+from .models import SpotifyData
+from app import db
 from .clustering.kmeans import perform_kmeans_clustering
 from .clustering.dbscan import perform_dbscan_clustering
 from .clustering.agglomerative import perform_agglomerative_clustering
 import pandas as pd
-from app.models import SpotifyData
 
 
 bp = Blueprint('main', __name__)
@@ -28,15 +28,6 @@ def search():
 @bp.route('/')
 def home():
     return render_template("app.html")
-
-def initialize_clustering():
-    perform_kmeans_clustering()
-    perform_dbscan_clustering()
-    perform_agglomerative_clustering()
-
-@bp.before_app_request
-def before_app_request():
-    initialize_clustering()
 
 @bp.route('/comparison')
 def comparison():
@@ -67,3 +58,8 @@ def comparison():
                            top_kmeans_html=top_kmeans_html,
                            top_dbscan_html=top_dbscan_html,
                            top_agglomerative_html=top_agglomerative_html)
+
+def initialize_clustering():
+    perform_kmeans_clustering()
+    perform_dbscan_clustering()
+    perform_agglomerative_clustering()

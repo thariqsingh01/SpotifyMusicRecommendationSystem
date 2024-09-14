@@ -1,8 +1,10 @@
-# models.py
+print("Before importing SpotifyData")
 
-from . import db
+from app import db
 
-class Spotify(db.Model):
+print("After db import, before defining SpotifyData")
+
+class SpotifyData(db.Model):
     __tablename__ = 'Spotify'
     number = db.Column(db.Integer, primary_key=True)
     artist_name = db.Column(db.String)
@@ -36,4 +38,8 @@ class Spotify(db.Model):
             return f"{minutes} min {seconds} sec"
         else:
             return None
-    
+        
+    def __repr__(self):
+        return f'<SpotifyData {self.track_name}>'
+
+print("SpotifyData defined successfully")

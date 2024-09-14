@@ -3,9 +3,9 @@
 import pandas as pd
 from sklearn.cluster import AgglomerativeClustering
 from app import db
-from app.models import SpotifyData
 
 def perform_agglomerative_clustering():
+    from app.models import SpotifyData
     # Query all data
     data = SpotifyData.query.all()
     
