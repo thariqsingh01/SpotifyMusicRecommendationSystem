@@ -37,5 +37,3 @@ class SpotifyData(db.Model):
         
     def __repr__(self):
         return f'<SpotifyData {self.track_name}>'
-
-print("SpotifyData defined successfully")

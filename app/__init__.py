@@ -17,15 +17,11 @@ def create_app():
 
     with app.app_context():
         from .main import bp as main_bp
-        from .main import initialize_clustering
-
         # Register the main blueprint
         app.register_blueprint(main_bp)
 
         # Optional: Create tables if not exist
         db.create_all()
 
-        # Perform clustering initialization once at startup
-        initialize_clustering()
-
     return app
+

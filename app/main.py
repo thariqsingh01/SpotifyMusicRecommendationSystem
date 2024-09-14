@@ -8,7 +8,6 @@ from .clustering.dbscan import perform_dbscan_clustering
 from .clustering.agglomerative import perform_agglomerative_clustering
 import pandas as pd
 
-
 bp = Blueprint('main', __name__)
 
 @bp.route('/search')
@@ -58,6 +57,7 @@ def comparison():
                            top_kmeans_html=top_kmeans_html,
                            top_dbscan_html=top_dbscan_html,
                            top_agglomerative_html=top_agglomerative_html)
+
 
 def initialize_clustering():
     perform_kmeans_clustering()
