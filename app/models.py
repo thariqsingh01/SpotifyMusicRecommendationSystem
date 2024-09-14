@@ -1,8 +1,4 @@
-print("Before importing SpotifyData")
-
 from app import db
-
-print("After db import, before defining SpotifyData")
 
 class SpotifyData(db.Model):
     __tablename__ = 'Spotify'
