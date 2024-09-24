@@ -1,3 +1,5 @@
+#kmeans
+
 """
 import pandas as pd
 from sklearn.cluster import KMeans
@@ -65,16 +67,13 @@ def perform_kmeans_clustering():
         print(f"Error committing changes to the database: {e}")
 """
 
-import h2o
-from h2o.estimators import H2OKMeansEstimator
+import dask.dataframe as dd
+from dask_ml.cluster import KMeans
+import pandas as pd
 from app import db
 from app.models import SpotifyData
-import pandas as pd
 
 def perform_kmeans_clustering():
-    # Initialize H2O with a memory limit
-    h2o.init(max_mem_size="4G")  # Adjust based on your system's capabilities
-
     # Query all data from the Spotify table
     data = SpotifyData.query.all()
     
@@ -82,31 +81,25 @@ def perform_kmeans_clustering():
         print("No data retrieved from Spotify table.")
         return
 
-    # Convert data to a pandas DataFrame
-    df = pd.DataFrame([{
+    # Convert data to a Dask DataFrame
+    df = dd.from_pandas(pd.DataFrame([{
         "danceability": d.danceability,
         "energy": d.energy,
         "tempo": d.tempo,
         "valence": d.valence,
         "track_id": d.track_id
-    } for d in data])
-    
-    # Optionally sample data if it's too large
-    # df = df.sample(frac=0.1, random_state=42)  # Sample 10% of the data
-    
-    # Convert DataFrame to H2O Frame
-    h2o_df = h2o.H2OFrame(df)
+    } for d in data]), npartitions=4)  # Adjust partitions as needed
 
-    # Train the H2O KMeans model
-    kmeans = H2OKMeansEstimator(k=10, use_gpu=True)
-    kmeans.train(training_frame=h2o_df)
+    # Train the Dask KMeans model
+    kmeans = KMeans(n_clusters=10)
+    kmeans.fit(df[['danceability', 'energy', 'tempo', 'valence']])
 
-    # Get the cluster labels
-    labels = kmeans.predict(h2o_df)
+    # Get cluster labels
+    labels = kmeans.predict(df[['danceability', 'energy', 'tempo', 'valence']]).compute()
 
     # Save cluster labels to the database
-    for i, label in enumerate(labels.as_data_frame()['predict']):
-        song_record = SpotifyData.query.filter_by(track_id=df['track_id'][i]).first()  
+    for i, label in enumerate(labels):
+        song_record = SpotifyData.query.filter_by(track_id=df['track_id'].iloc[i]).first()  
         if song_record:
             song_record.kmeans = int(label)  
             db.session.add(song_record)
@@ -114,10 +107,7 @@ def perform_kmeans_clustering():
     # Commit all the changes to the database
     try:
         db.session.commit()
-        print(f"Successfully updated {len(data)} records with H2O KMeans labels.")
+        print(f"Successfully updated {len(data)} records with Dask KMeans labels.")
     except Exception as e:
         db.session.rollback()
         print(f"Error committing changes to the database: {e}")
-
-    # Shutdown H2O instance
-    h2o.shutdown()
