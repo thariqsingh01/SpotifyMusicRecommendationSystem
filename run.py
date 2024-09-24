@@ -1,7 +1,10 @@
 #run.py
 
+import os
 import sys
 sys.path.append('D:/Varsity/Honours/Semester 2/Comp700/SpotifyMusicRecommendationSystem/SpotifyMusicRecommendationSystem')
+
+os.environ["OMP_NUM_THREADS"] = "1"
 
 from app import create_app
 from app.main import initialize_clustering

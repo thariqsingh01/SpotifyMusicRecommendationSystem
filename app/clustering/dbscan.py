@@ -27,15 +27,19 @@ def perform_dbscan_clustering():
 from sklearn.cluster import DBSCAN
 import dask.dataframe as dd
 import pandas as pd
+import logging
 from app import db
 from app.models import SpotifyData
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
 def perform_dbscan_clustering():
     # Query all data from the Spotify table
     data = SpotifyData.query.all()
     
     if not data:
-        print("No data retrieved from Spotify table.")
+        logging.warning("No data retrieved from Spotify table.")
         return
 
     # Convert data to a Dask DataFrame
@@ -51,18 +55,18 @@ def perform_dbscan_clustering():
     features = df[['danceability', 'energy', 'tempo', 'valence']].compute().values
 
     # Perform DBSCAN clustering
-    dbscan = DBSCAN(eps=0.5, min_samples=5)  # Adjust parameters as needed
+    dbscan = DBSCAN(eps=0.5, min_samples=5)
     labels = dbscan.fit_predict(features)
 
     # Save cluster labels to the database
     for i, song in enumerate(data):
         song.dbscan = labels[i]
         db.session.add(song)
-    
+
     # Commit all changes to the database
     try:
         db.session.commit()
-        print(f"Successfully updated {len(data)} records with DBSCAN labels.")
+        logging.info(f"Successfully updated {len(data)} records with DBSCAN labels.")
     except Exception as e:
         db.session.rollback()
-        print(f"Error committing changes to the database: {e}")
+        logging.error(f"Error committing changes to the database: {e}")

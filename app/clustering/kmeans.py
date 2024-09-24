@@ -1,4 +1,4 @@
-#kmeans
+#kmeans.py
 
 """
 import pandas as pd
@@ -70,15 +70,19 @@ def perform_kmeans_clustering():
 import dask.dataframe as dd
 from dask_ml.cluster import KMeans
 import pandas as pd
+import logging
 from app import db
 from app.models import SpotifyData
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
 def perform_kmeans_clustering():
     # Query all data from the Spotify table
     data = SpotifyData.query.all()
     
     if not data:
-        print("No data retrieved from Spotify table.")
+        logging.warning("No data retrieved from Spotify table.")
         return
 
     # Convert data to a Dask DataFrame
@@ -88,7 +92,7 @@ def perform_kmeans_clustering():
         "tempo": d.tempo,
         "valence": d.valence,
         "track_id": d.track_id
-    } for d in data]), npartitions=4)  # Adjust partitions as needed
+    } for d in data]), npartitions=4)
 
     # Train the Dask KMeans model
     kmeans = KMeans(n_clusters=10)
@@ -99,15 +103,17 @@ def perform_kmeans_clustering():
 
     # Save cluster labels to the database
     for i, label in enumerate(labels):
-        song_record = SpotifyData.query.filter_by(track_id=df['track_id'].iloc[i]).first()  
+        song_record = SpotifyData.query.filter_by(track_id=df['track_id'].loc[i]).first()  
         if song_record:
-            song_record.kmeans = int(label)  
+            song_record.kmeans = int(label)
             db.session.add(song_record)
+        else:
+            logging.warning(f"No song found with track_id: {df['track_id'].loc[i]}")
 
     # Commit all the changes to the database
     try:
         db.session.commit()
-        print(f"Successfully updated {len(data)} records with Dask KMeans labels.")
+        logging.info(f"Successfully updated {len(data)} records with Dask KMeans labels.")
     except Exception as e:
         db.session.rollback()
-        print(f"Error committing changes to the database: {e}")
+        logging.error(f"Error committing changes to the database: {e}")

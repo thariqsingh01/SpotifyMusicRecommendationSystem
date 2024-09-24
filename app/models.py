@@ -1,3 +1,5 @@
+#models.py
+
 from app import db
 
 class SpotifyData(db.Model):
@@ -5,7 +7,7 @@ class SpotifyData(db.Model):
     number = db.Column(db.Integer, primary_key=True)
     artist_name = db.Column(db.String)
     track_name = db.Column(db.String)
-    track_id = db.Column(db.String)
+    track_id = db.Column(db.String, unique=True)
     popularity = db.Column(db.Integer)
     year = db.Column(db.Integer)
     genre = db.Column(db.String)
