@@ -67,15 +67,17 @@ def perform_kmeans_clustering():
         print(f"Error committing changes to the database: {e}")
 """
 
+
 import dask.dataframe as dd
 from dask_ml.cluster import KMeans
+from sklearn.cluster import DBSCAN, AgglomerativeClustering
 import pandas as pd
 import logging
 from app import db
 from app.models import SpotifyData
+import dask.array as da
+from sklearn.preprocessing import StandardScaler  # For scaling data before clustering
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
 
 def perform_kmeans_clustering():
     # Query all data from the Spotify table
@@ -94,26 +96,56 @@ def perform_kmeans_clustering():
         "track_id": d.track_id
     } for d in data]), npartitions=4)
 
-    # Train the Dask KMeans model
+    # Extract relevant features for clustering
+    features = df[['danceability', 'energy', 'tempo', 'valence']].compute()
+
+    # Standardize the features for better clustering performance
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(features)
+
+    # 1. KMeans Clustering
     kmeans = KMeans(n_clusters=10)
-    kmeans.fit(df[['danceability', 'energy', 'tempo', 'valence']])
+    kmeans.fit(features)
+    kmeans_labels = kmeans.predict(features).compute()
 
-    # Get cluster labels
-    labels = kmeans.predict(df[['danceability', 'energy', 'tempo', 'valence']]).compute()
+    # 2. DBSCAN Clustering
+    dbscan = DBSCAN(eps=0.5, min_samples=10)
+    dbscan_labels = dbscan.fit_predict(scaled_features)  # Use scaled features for DBSCAN
 
-    # Save cluster labels to the database
-    for i, label in enumerate(labels):
-        song_record = SpotifyData.query.filter_by(track_id=df['track_id'].loc[i]).first()  
+    # 3. Agglomerative Clustering
+    agglomerative = AgglomerativeClustering(n_clusters=10)
+    agglomerative_labels = agglomerative.fit_predict(scaled_features)
+
+    # Convert all label arrays to Dask Arrays
+    kmeans_labels_array = da.from_array(kmeans_labels, chunks=(len(kmeans_labels) // 4,))
+    dbscan_labels_array = da.from_array(dbscan_labels, chunks=(len(dbscan_labels) // 4,))
+    agglomerative_labels_array = da.from_array(agglomerative_labels, chunks=(len(agglomerative_labels) // 4,))
+
+    # Assign labels to the DataFrame
+    df['kmeans_cluster'] = kmeans_labels_array
+    df['dbscan_cluster'] = dbscan_labels_array
+    df['agglomerative_cluster'] = agglomerative_labels_array
+
+    # Save cluster labels to the database using batch processing
+    for track_id, kmeans_label, dbscan_label, agglomerative_label in zip(
+        df['track_id'].compute(), 
+        kmeans_labels, 
+        dbscan_labels, 
+        agglomerative_labels):
+        
+        song_record = SpotifyData.query.filter_by(track_id=track_id).first()
         if song_record:
-            song_record.kmeans = int(label)
+            song_record.kmeans = int(kmeans_label)
+            song_record.dbscan = int(dbscan_label)
+            song_record.agglomerative = int(agglomerative_label)
             db.session.add(song_record)
         else:
-            logging.warning(f"No song found with track_id: {df['track_id'].loc[i]}")
+            logging.warning(f"No song found with track_id: {track_id}")
 
     # Commit all the changes to the database
     try:
         db.session.commit()
-        logging.info(f"Successfully updated {len(data)} records with Dask KMeans labels.")
+        logging.info(f"Successfully updated {len(data)} records with clustering labels.")
     except Exception as e:
         db.session.rollback()
         logging.error(f"Error committing changes to the database: {e}")

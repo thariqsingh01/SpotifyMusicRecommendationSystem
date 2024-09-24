@@ -3,6 +3,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import urllib
+from sqlalchemy import create_engine
 
 db = SQLAlchemy()
 
@@ -12,6 +13,9 @@ def create_app():
         'DRIVER={ODBC Driver 17 for SQL Server};SERVER=MSCS\\SQLEXPRESS;DATABASE=Spotify;Trusted_Connection=yes;')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_ECHO'] = True
+
+    # Manually create the engine
+    engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], echo=False)
 
     db.init_app(app)
 
