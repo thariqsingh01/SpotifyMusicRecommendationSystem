@@ -75,47 +75,73 @@ from app import db
 from app.models import SpotifyData
 from dask.distributed import Client
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 def perform_kmeans_clustering():
     # Start a Dask client for parallel processing
     client = Client()  # This will create a Dask scheduler and workers
+    logger.info("Dask client started for parallel processing.")
 
-    # Query all data from the Spotify table
-    data = SpotifyData.query.all()
-
-    if not data:
-        logging.warning("No data retrieved from Spotify table.")
-        return
-
-    # Convert data to a Dask DataFrame
-    df = dd.from_pandas(pd.DataFrame([{
-        "danceability": d.danceability,
-        "energy": d.energy,
-        "tempo": d.tempo,
-        "valence": d.valence,
-        "track_id": d.track_id
-    } for d in data]), npartitions=4)
-
-    # Convert to a numpy array for KMeans
-    features = df[['danceability', 'energy', 'tempo', 'valence']].compute().values
-
-    # Perform KMeans clustering
-    kmeans = KMeans(n_clusters=5, random_state=42)  # Set n_clusters as needed
-    labels = kmeans.fit_predict(features)
-
-    # Prepare bulk update for saving cluster labels to the database
-    song_updates = []
-    for i, song in enumerate(data):
-        song.kmeans = labels[i]  # Change the field to kmeans
-        song_updates.append(song)
-
-    # Bulk update the database with the modified records
     try:
+        # Query all data from the Spotify table
+        data = SpotifyData.query.all()
+
+        if not data:
+            logger.warning("No data retrieved from Spotify table.")
+            return
+
+        # Convert queried data to a pandas DataFrame
+        df = pd.DataFrame([{
+            "danceability": d.danceability,
+            "energy": d.energy,
+            "tempo": d.tempo,
+            "valence": d.valence,
+            "track_id": d.track_id
+        } for d in data])
+
+        logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
+
+        # Ensure that the DataFrame is UTF-8 encoded to avoid UnicodeDecodeError
+        df = df.applymap(lambda x: x.encode('utf-8', errors='ignore').decode('utf-8') if isinstance(x, str) else x)
+
+        # Convert pandas DataFrame to Dask DataFrame for distributed processing
+        npartitions = 10  # Increase the partition count for better parallelization
+        ddf = dd.from_pandas(df, npartitions=npartitions)
+
+        # Scatter the DataFrame across Dask workers to optimize processing
+        scattered_data = client.scatter(ddf)
+
+        # Extract features for clustering
+        features = scattered_data[['danceability', 'energy', 'tempo', 'valence']].compute().values
+
+        # Perform KMeans clustering
+        logger.info("Performing KMeans clustering...")
+        kmeans = KMeans(n_clusters=5, random_state=42)  # Adjust n_clusters as needed
+        labels = kmeans.fit_predict(features)
+
+        # Prepare the bulk update of cluster labels back to the database
+        song_updates = []
+        for i, song in enumerate(data):
+            song.kmeans = labels[i]  # Assuming 'kmeans' is the field to store the cluster label
+            song_updates.append(song)
+
+        # Bulk update the database with the new cluster labels
         db.session.bulk_save_objects(song_updates)
         db.session.commit()
-        logging.info(f"Successfully updated {len(data)} records with KMeans labels.")
+        logger.info(f"Successfully updated {len(song_updates)} records with KMeans labels.")
+
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error committing changes to the database: {e}")
+        logger.error(f"Error during KMeans clustering or database update: {e}")
+        logger.debug(e, exc_info=True)
 
-    # Close the Dask client
-    client.close()
+    finally:
+        # Close the Dask client
+        client.close()
+        logger.info("Dask client closed after clustering.")
+
+# Call the function if this script is run directly
+if __name__ == '__main__':
+    perform_kmeans_clustering()
