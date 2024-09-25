@@ -7,14 +7,17 @@ from sqlalchemy import create_engine
 
 db = SQLAlchemy()
 
-def create_app():
+def create_app(uri=None):
     app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mssql+pyodbc:///?odbc_connect=' + urllib.parse.quote_plus(
-        'DRIVER={ODBC Driver 17 for SQL Server};SERVER=MSCS\\SQLEXPRESS;DATABASE=Spotify;Trusted_Connection=yes;')
+    if uri is None:
+        uri = 'mssql+pyodbc:///?odbc_connect=' + urllib.parse.quote_plus(
+            'DRIVER={ODBC Driver 17 for SQL Server};SERVER=MSCS\\SQLEXPRESS;DATABASE=Spotify;Trusted_Connection=yes;'
+        )
+    app.config['SQLALCHEMY_DATABASE_URI'] = uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_ECHO'] = True
 
-    # Manually create the engine
+    # Create the engine
     engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], echo=False)
 
     db.init_app(app)
@@ -27,5 +30,4 @@ def create_app():
         # Optional: Create tables if not exist
         db.create_all()
 
-    return app
-
+    return app, engine  # Return both app and engine

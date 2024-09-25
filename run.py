@@ -25,25 +25,24 @@ if __name__ == "__main__":
 import os
 import sys
 import logging
+import urllib
+from app import create_app
+from app.main import initialize_clustering
 
 sys.path.append('D:/Varsity/Honours/Semester 2/Comp700/SpotifyMusicRecommendationSystem/SpotifyMusicRecommendationSystem')
 
 os.environ["OMP_NUM_THREADS"] = "1"
 
-from app import create_app
-from app.main import initialize_clustering
-
-# Set up logging to silence SQLAlchemy logs
-#logging.disable(logging.CRITICAL)
-
-app = create_app()
 
 if __name__ == "__main__":
-    # Initialize clustering
-    with app.app_context():
-        initialize_clustering()
-    
-    # Start the Flask development server
-    app.run(debug=True)
+    app, engine = create_app('mssql+pyodbc:///?odbc_connect=' + urllib.parse.quote_plus(
+            'DRIVER={ODBC Driver 17 for SQL Server};SERVER=MSCS\\SQLEXPRESS;DATABASE=Spotify;Trusted_Connection=yes;'
+        ))  
+    with app.app_context():  
+        initialize_clustering('mssql+pyodbc:///?odbc_connect=' + urllib.parse.quote_plus(
+            'DRIVER={ODBC Driver 17 for SQL Server};SERVER=MSCS\\SQLEXPRESS;DATABASE=Spotify;Trusted_Connection=yes;'
+        ), engine) 
+    app.run()
+
 
 

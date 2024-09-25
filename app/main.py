@@ -59,7 +59,8 @@ def comparison():
                            top_agglomerative_html=top_agglomerative_html)
 
 
-def initialize_clustering():
-    perform_kmeans_clustering()
-    perform_dbscan_clustering()
-    perform_agglomerative_clustering()
+def initialize_clustering(uri, engine):
+    perform_kmeans_clustering(uri, engine)
+    #perform_dbscan_clustering(uri, engine)
+    #perform_agglomerative_clustering(uri, engine)
+

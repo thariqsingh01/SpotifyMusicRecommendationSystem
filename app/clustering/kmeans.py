@@ -67,32 +67,34 @@ def perform_kmeans_clustering():
         print(f"Error committing changes to the database: {e}")
 """
 
+
+import logging
 from sklearn.cluster import KMeans
 import dask.dataframe as dd
 import pandas as pd
-import logging
 from app import db
 from app.models import SpotifyData
+import numpy as np
 from dask.distributed import Client
+from sklearn.preprocessing import StandardScaler
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_kmeans_clustering():
-    # Start a Dask client for parallel processing
-    client = Client()  # This will create a Dask scheduler and workers
+def perform_kmeans_clustering(uri, engine):
+    client = Client()
     logger.info("Dask client started for parallel processing.")
 
     try:
-        # Query all data from the Spotify table
+        # Retrieve data from Spotify table
         data = SpotifyData.query.all()
 
         if not data:
             logger.warning("No data retrieved from Spotify table.")
             return
 
-        # Convert queried data to a pandas DataFrame
+        # Convert data to pandas DataFrame
         df = pd.DataFrame([{
             "danceability": d.danceability,
             "energy": d.energy,
@@ -103,34 +105,68 @@ def perform_kmeans_clustering():
 
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
-        # Ensure that the DataFrame is UTF-8 encoded to avoid UnicodeDecodeError
-        df = df.applymap(lambda x: x.encode('utf-8', errors='ignore').decode('utf-8') if isinstance(x, str) else x)
-
-        # Convert pandas DataFrame to Dask DataFrame for distributed processing
-        npartitions = 10  # Increase the partition count for better parallelization
+        # Define number of partitions for Dask DataFrame
+        npartitions = 10
         ddf = dd.from_pandas(df, npartitions=npartitions)
 
-        # Scatter the DataFrame across Dask workers to optimize processing
-        scattered_data = client.scatter(ddf)
+        # Select features
+        features = ddf[['danceability', 'energy', 'tempo', 'valence']].compute().values
+        logger.info(f"Feature array shape: {features.shape}")
 
-        # Extract features for clustering
-        features = scattered_data[['danceability', 'energy', 'tempo', 'valence']].compute().values
+        # Scale features
+        scaler = StandardScaler()
+        features_scaled = scaler.fit_transform(features)
 
-        # Perform KMeans clustering
-        logger.info("Performing KMeans clustering...")
-        kmeans = KMeans(n_clusters=5, random_state=42)  # Adjust n_clusters as needed
-        labels = kmeans.fit_predict(features)
+        logger.info("Submitting KMeans clustering tasks to Dask...")
 
-        # Prepare the bulk update of cluster labels back to the database
-        song_updates = []
-        for i, song in enumerate(data):
-            song.kmeans = labels[i]  # Assuming 'kmeans' is the field to store the cluster label
-            song_updates.append(song)
+        # Define KMeans function with handling for insufficient data points in a chunk
+        def perform_kmeans_on_chunk(chunk):
+            kmeans = KMeans(n_clusters=5, random_state=42)
+            chunk_computed = chunk.compute()
+            if len(chunk_computed) >= kmeans.n_clusters:
+                labels = kmeans.fit_predict(chunk_computed)
+            else:
+                labels = np.zeros(len(chunk_computed))  # Assign zero cluster for small chunks
+            return labels
 
-        # Bulk update the database with the new cluster labels
-        db.session.bulk_save_objects(song_updates)
-        db.session.commit()
-        logger.info(f"Successfully updated {len(song_updates)} records with KMeans labels.")
+        # Split features into chunks and submit them to Dask
+        futures = [client.submit(perform_kmeans_on_chunk, chunk) for chunk in
+                   dd.from_array(features_scaled, chunksize=len(features_scaled) // npartitions).to_delayed()]
+
+        # Gather results
+        labels = client.gather(futures)
+
+        # Concatenate the results into one array
+        labels_concat = pd.concat([pd.Series(l) for l in labels])
+
+        # Convert labels to a Dask array for further processing
+        labels_dask = dd.from_array(labels_concat.values, chunksize=npartitions)
+
+        # **Fix the Update Function**: Ensure rows and labels match
+        def update_song(df, labels):
+            if len(df) != len(labels):
+                raise ValueError(f"Mismatch in number of rows: {len(df)} and labels: {len(labels)}")
+            df['kmeans'] = labels
+            return df
+
+        # Apply the update function
+        ddf_updated = ddf.map_partitions(update_song, labels_dask.compute(), meta={'track_id': 'int64', 'kmeans': 'int64'})
+
+        # Convert to Pandas DataFrame for SQL update
+        df_updated = ddf_updated.compute()
+
+        # **Optimize the database update**: Update with necessary data
+        updates = []  # List to store updates for bulk insert
+        for index, row in df_updated.iterrows():
+            song = SpotifyData.query.filter_by(track_id=row['track_id']).first()
+            if song:
+                song.kmeans = row['kmeans']
+                updates.append(song)
+
+        if updates:  # Check if there are updates before committing
+            db.session.add_all(updates)
+            db.session.commit()
+            logger.info(f"Successfully updated {len(updates)} records with KMeans labels.")
 
     except Exception as e:
         db.session.rollback()
@@ -138,10 +174,5 @@ def perform_kmeans_clustering():
         logger.debug(e, exc_info=True)
 
     finally:
-        # Close the Dask client
         client.close()
         logger.info("Dask client closed after clustering.")
-
-# Call the function if this script is run directly
-if __name__ == '__main__':
-    perform_kmeans_clustering()
