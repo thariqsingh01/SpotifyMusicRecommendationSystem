@@ -40,28 +40,30 @@ def perform_agglomerative_clustering():
         logging.warning("No data retrieved from Spotify table.")
         return
 
-    # Extract features for clustering
+    # Extract features for clustering (danceability, energy, tempo, valence)
     features = [[d.danceability, d.energy, d.tempo, d.valence] for d in data]
 
     # Convert features to Dask DataFrame for handling large datasets
     dask_df = dd.from_array(features, columns=["danceability", "energy", "tempo", "valence"])
 
     # Convert the Dask DataFrame to NumPy array for sklearn compatibility
-    features_np = dask_df.compute().to_numpy()
+    features_np = dask_df.compute()  # Compute the Dask DataFrame to get a NumPy array
 
     # Train the scikit-learn Agglomerative Clustering model
     agglomerative = AgglomerativeClustering(n_clusters=10)
     labels = agglomerative.fit_predict(features_np)
 
     # Save cluster labels to the database with batch processing
-    for i, song in enumerate(data):
-        song.agglomerative = labels[i]
-        db.session.add(song)  # Add the modified song record to the session
-
-    # Commit all changes to the database
     try:
+        for i, song in enumerate(data):
+            song.agglomerative = labels[i]  # Update each song with its cluster label
+            db.session.add(song)  # Add the modified song record to the session
+        
+        # Commit all changes to the database
         db.session.commit()
         logging.info(f"Successfully updated {len(data)} records with Agglomerative Clustering labels.")
     except Exception as e:
         db.session.rollback()
         logging.error(f"Error committing changes to the database: {e}")
+
+

@@ -56,8 +56,8 @@ def perform_dbscan_clustering():
     # Convert to a numpy array for DBSCAN
     features = df[['danceability', 'energy', 'tempo', 'valence']].compute().values
 
-    # Perform DBSCAN clustering in parallel
-    dbscan = DBSCAN(eps=0.5, min_samples=5)
+    # Perform DBSCAN clustering
+    dbscan = DBSCAN(eps=0.5, min_samples=5)  # Adjust eps and min_samples based on dataset
     labels = dbscan.fit_predict(features)
 
     # Prepare bulk update for saving cluster labels to the database
@@ -75,5 +75,6 @@ def perform_dbscan_clustering():
         db.session.rollback()
         logging.error(f"Error committing changes to the database: {e}")
 
-    # Close the Dask client
-    client.close()
+    finally:
+        # Ensure the Dask client is closed properly
+        client.close()
