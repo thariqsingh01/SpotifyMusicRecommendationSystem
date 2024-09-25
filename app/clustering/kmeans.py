@@ -65,18 +65,19 @@ def perform_kmeans_clustering():
     except Exception as e:
         db.session.rollback()
         print(f"Error committing changes to the database: {e}")
-"""
+
+
 
 
 import logging
-from sklearn.cluster import KMeans
-import dask.dataframe as dd
 import pandas as pd
-from app import db
-from app.models import SpotifyData
-import numpy as np
+from sklearn.cluster import KMeans
 from dask.distributed import Client
 from sklearn.preprocessing import StandardScaler
+from app import db
+from app.models import SpotifyData
+import dask.dataframe as dd
+from sqlalchemy import create_engine
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -87,77 +88,38 @@ def perform_kmeans_clustering(uri, engine):
     logger.info("Dask client started for parallel processing.")
 
     try:
-        # Retrieve data from Spotify table
-        data = SpotifyData.query.all()
+        # Retrieve data from Spotify table using Pandas
+        query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
+        df = pd.read_sql(query, engine)
 
-        if not data:
+        if df.empty:
             logger.warning("No data retrieved from Spotify table.")
             return
 
-        # Convert data to pandas DataFrame
-        df = pd.DataFrame([{
-            "danceability": d.danceability,
-            "energy": d.energy,
-            "tempo": d.tempo,
-            "valence": d.valence,
-            "track_id": d.track_id
-        } for d in data])
-
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
-        # Define number of partitions for Dask DataFrame
-        npartitions = 10
-        ddf = dd.from_pandas(df, npartitions=npartitions)
-
-        # Select features
-        features = ddf[['danceability', 'energy', 'tempo', 'valence']].compute().values
-        logger.info(f"Feature array shape: {features.shape}")
+        # Convert Pandas DataFrame to Dask DataFrame
+        ddf = dd.from_pandas(df, npartitions=10)  # Adjust number of partitions as needed
 
         # Scale features
         scaler = StandardScaler()
-        features_scaled = scaler.fit_transform(features)
+        features_scaled = scaler.fit_transform(ddf[['danceability', 'energy', 'tempo', 'valence']].compute())
 
-        logger.info("Submitting KMeans clustering tasks to Dask...")
+        # Initialize KMeans
+        kmeans = KMeans(n_clusters=5, random_state=42)
 
-        # Define KMeans function with handling for insufficient data points in a chunk
-        def perform_kmeans_on_chunk(chunk):
-            kmeans = KMeans(n_clusters=5, random_state=42)
-            chunk_computed = chunk.compute()
-            if len(chunk_computed) >= kmeans.n_clusters:
-                labels = kmeans.fit_predict(chunk_computed)
-            else:
-                labels = np.zeros(len(chunk_computed))  # Assign zero cluster for small chunks
-            return labels
+        logger.info("Fitting KMeans model...")
+        # Fit the model to the scaled features
+        labels = kmeans.fit_predict(features_scaled)
 
-        # Split features into chunks and submit them to Dask
-        futures = [client.submit(perform_kmeans_on_chunk, chunk) for chunk in
-                   dd.from_array(features_scaled, chunksize=len(features_scaled) // npartitions).to_delayed()]
+        logger.info("KMeans model fitted successfully.")
 
-        # Gather results
-        labels = client.gather(futures)
+        # Add labels to DataFrame
+        df['kmeans'] = labels
 
-        # Concatenate the results into one array
-        labels_concat = pd.concat([pd.Series(l) for l in labels])
-
-        # Convert labels to a Dask array for further processing
-        labels_dask = dd.from_array(labels_concat.values, chunksize=npartitions)
-
-        # **Fix the Update Function**: Ensure rows and labels match
-        def update_song(df, labels):
-            if len(df) != len(labels):
-                raise ValueError(f"Mismatch in number of rows: {len(df)} and labels: {len(labels)}")
-            df['kmeans'] = labels
-            return df
-
-        # Apply the update function
-        ddf_updated = ddf.map_partitions(update_song, labels_dask.compute(), meta={'track_id': 'int64', 'kmeans': 'int64'})
-
-        # Convert to Pandas DataFrame for SQL update
-        df_updated = ddf_updated.compute()
-
-        # **Optimize the database update**: Update with necessary data
+        # Optimize the database update: Update with necessary data
         updates = []  # List to store updates for bulk insert
-        for index, row in df_updated.iterrows():
+        for index, row in df.iterrows():
             song = SpotifyData.query.filter_by(track_id=row['track_id']).first()
             if song:
                 song.kmeans = row['kmeans']
@@ -169,10 +131,80 @@ def perform_kmeans_clustering(uri, engine):
             logger.info(f"Successfully updated {len(updates)} records with KMeans labels.")
 
     except Exception as e:
-        db.session.rollback()
+        db.session.rollback()  # Rollback the session on error
         logger.error(f"Error during KMeans clustering or database update: {e}")
         logger.debug(e, exc_info=True)
 
     finally:
-        client.close()
+        client.close()  # Close Dask client
         logger.info("Dask client closed after clustering.")
+"""
+
+import h2o
+from h2o.estimators import H2OKMeansEstimator
+import pandas as pd
+from app import db
+from app.models import SpotifyData
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def perform_kmeans_clustering(uri, engine):
+    h2o.init()  # Initialize H2O cluster
+    logger.info("H2O cluster started.")
+
+    try:
+        # Retrieve data from Spotify table using Pandas
+        query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
+        df = pd.read_sql(query, engine)
+
+        if df.empty:
+            logger.warning("No data retrieved from Spotify table.")
+            return
+
+        logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
+
+        # Convert Pandas DataFrame to H2OFrame
+        h2o_df = h2o.H2OFrame(df)
+
+        # Initialize KMeans
+        kmeans = H2OKMeansEstimator(k=5, seed=42)
+        logger.info("Fitting H2O KMeans model...")
+
+        # Fit the model to the data
+        kmeans.train(x=['danceability', 'energy', 'tempo', 'valence'], training_frame=h2o_df)
+
+        logger.info("H2O KMeans model fitted successfully.")
+        
+        # Get cluster assignments
+        cluster_assignments = kmeans.predict(h2o_df)
+        
+        # Add cluster labels to the original DataFrame
+        df['kmeans'] = cluster_assignments['predict'].as_data_frame().values.flatten()
+
+        # Bulk update using SQLAlchemy
+        session = db.session
+        updates = []
+
+        for index, row in df.iterrows():
+            updates.append({
+                'track_id': row['track_id'],
+                'kmeans': row['kmeans']
+            })
+
+        # Bulk insert with SQLAlchemy
+        if updates:
+            session.bulk_update_mappings(SpotifyData, updates)
+            session.commit()
+            logger.info(f"Successfully updated {len(updates)} records with KMeans labels.")
+
+    except Exception as e:
+        logger.error(f"Error during H2O KMeans clustering or database update: {e}")
+        db.session.rollback()  # Rollback the session on error
+        logger.debug(e, exc_info=True)
+
+    finally:
+        h2o.shutdown()  # Shutdown H2O cluster
+        logger.info("H2O cluster shut down after clustering.")

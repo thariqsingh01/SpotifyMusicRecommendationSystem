@@ -23,68 +23,76 @@ def perform_agglomerative_clustering():
         db.session.add(song)
     db.session.commit()
 """
-import dask.dataframe as dd
-from sklearn.cluster import AgglomerativeClustering
-import logging
+
+import h2o
+from h2o.estimators import H2OHierarchicalClusteringEstimator
+import pandas as pd
 from app import db
 from app.models import SpotifyData
-from dask.distributed import Client
+import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def perform_agglomerative_clustering():
-    # Start a Dask client for parallel processing
-    client = Client()  # This will create a Dask scheduler and workers
-    logger.info("Dask client started for parallel processing.")
+def perform_agglomerative_clustering(uri, engine):
+    h2o.init()  # Initialize H2O cluster
+    logger.info("H2O cluster started.")
 
     try:
-        # Query all data from the Spotify table
-        data = SpotifyData.query.all()
+        # Retrieve data from Spotify table using Pandas
+        query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
+        df = pd.read_sql(query, engine)
 
-        if not data:
+        if df.empty:
             logger.warning("No data retrieved from Spotify table.")
             return
 
-        # Extract features for clustering (danceability, energy, tempo, valence)
-        features = [[d.danceability, d.energy, d.tempo, d.valence] for d in data]
+        logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
-        # Convert features to Dask DataFrame for handling large datasets
-        dask_df = dd.from_array(features, columns=["danceability", "energy", "tempo", "valence"])
+        # Convert Pandas DataFrame to H2OFrame
+        h2o_df = h2o.H2OFrame(df)
 
-        # Compute the Dask DataFrame to get a NumPy array compatible with sklearn
-        features_np = dask_df.compute()
+        # Scale features (optional but recommended for clustering)
+        h2o_df_scaled = h2o_df[['danceability', 'energy', 'tempo', 'valence']].scale()
 
-        logger.info(f"Data computed for {len(features_np)} records. Starting Agglomerative Clustering...")
+        # Initialize H2O Hierarchical Clustering
+        agglomerative = H2OHierarchicalClusteringEstimator()
+        logger.info("Fitting H2O Agglomerative Clustering model...")
 
-        # Train the scikit-learn Agglomerative Clustering model
-        agglomerative = AgglomerativeClustering(n_clusters=10)
-        labels = agglomerative.fit_predict(features_np)
+        # Fit the model to the data
+        agglomerative.train(x=['danceability', 'energy', 'tempo', 'valence'], training_frame=h2o_df_scaled)
 
-        logger.info("Agglomerative Clustering complete. Preparing to update database.")
+        logger.info("H2O Agglomerative Clustering model fitted successfully.")
+        
+        # Get cluster assignments
+        cluster_assignments = agglomerative.predict(h2o_df_scaled)
+        
+        # Add cluster labels to the original DataFrame
+        df['agglomerative'] = cluster_assignments['predict'].as_data_frame().values.flatten()
 
-        # Save cluster labels to the database with batch processing
-        song_updates = []
-        for i, song in enumerate(data):
-            song.agglomerative = labels[i]  # Update each song with its cluster label
-            song_updates.append(song)
+        # Bulk update using SQLAlchemy
+        session = db.session
+        updates = []
 
-        # Bulk update to minimize database write operations
-        db.session.bulk_save_objects(song_updates)
-        db.session.commit()
-        logger.info(f"Successfully updated {len(song_updates)} records with Agglomerative Clustering labels.")
+        for index, row in df.iterrows():
+            updates.append({
+                'track_id': row['track_id'],
+                'agglomerative': row['agglomerative']
+            })
+
+        # Bulk insert with SQLAlchemy
+        if updates:
+            session.bulk_update_mappings(SpotifyData, updates)
+            session.commit()
+            logger.info(f"Successfully updated {len(updates)} records with Agglomerative Clustering labels.")
 
     except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error during Agglomerative Clustering or database update: {e}")
+        logger.error(f"Error during H2O Agglomerative Clustering or database update: {e}")
+        db.session.rollback()  # Rollback the session on error
         logger.debug(e, exc_info=True)
 
     finally:
-        # Close the Dask client
-        client.close()
-        logger.info("Dask client closed after clustering.")
+        h2o.shutdown()  # Shutdown H2O cluster
+        logger.info("H2O cluster shut down after clustering.")
 
-# Call the function if this script is run directly
-if __name__ == '__main__':
-    perform_agglomerative_clustering()

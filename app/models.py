@@ -4,10 +4,10 @@ from app import db
 
 class SpotifyData(db.Model):
     __tablename__ = 'Spotify'
-    number = db.Column(db.Integer, primary_key=True)
+    number = db.Column(db.Integer)
     artist_name = db.Column(db.String)
     track_name = db.Column(db.String)
-    track_id = db.Column(db.String, unique=True)
+    track_id = db.Column(db.String, unique=True, primary_key=True)
     popularity = db.Column(db.Integer)
     year = db.Column(db.Integer)
     genre = db.Column(db.String)
