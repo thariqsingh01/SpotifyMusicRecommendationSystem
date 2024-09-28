@@ -140,8 +140,9 @@ def perform_kmeans_clustering(uri, engine):
         logger.info("Dask client closed after clustering.")
 """
 
-import h2o
-from h2o.estimators import H2OKMeansEstimator
+e
+import cudf
+from cuml.cluster import KMeans as cuKMeans
 import pandas as pd
 from app import db
 from app.models import SpotifyData
@@ -152,9 +153,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 def perform_kmeans_clustering(uri, engine):
-    h2o.init()  # Initialize H2O cluster
-    logger.info("H2O cluster started.")
-
     try:
         # Retrieve data from Spotify table using Pandas
         query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
@@ -166,23 +164,22 @@ def perform_kmeans_clustering(uri, engine):
 
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
-        # Convert Pandas DataFrame to H2OFrame
-        h2o_df = h2o.H2OFrame(df)
+        # Convert Pandas DataFrame to cuDF DataFrame
+        cu_df = cudf.DataFrame.from_records(df)
 
         # Initialize KMeans
-        kmeans = H2OKMeansEstimator(k=5, seed=42)
-        logger.info("Fitting H2O KMeans model...")
+        kmeans = cuKMeans(n_clusters=5, random_state=42)
+        logger.info("Fitting cuML KMeans model...")
 
         # Fit the model to the data
-        kmeans.train(x=['danceability', 'energy', 'tempo', 'valence'], training_frame=h2o_df)
+        kmeans.fit(cu_df[['danceability', 'energy', 'tempo', 'valence']])
+        logger.info("cuML KMeans model fitted successfully.")
 
-        logger.info("H2O KMeans model fitted successfully.")
-        
         # Get cluster assignments
-        cluster_assignments = kmeans.predict(h2o_df)
+        cluster_assignments = kmeans.predict(cu_df[['danceability', 'energy', 'tempo', 'valence']])
         
         # Add cluster labels to the original DataFrame
-        df['kmeans'] = cluster_assignments['predict'].as_data_frame().values.flatten()
+        df['kmeans'] = cluster_assignments.to_array()
 
         # Bulk update using SQLAlchemy
         session = db.session
@@ -201,10 +198,9 @@ def perform_kmeans_clustering(uri, engine):
             logger.info(f"Successfully updated {len(updates)} records with KMeans labels.")
 
     except Exception as e:
-        logger.error(f"Error during H2O KMeans clustering or database update: {e}")
+        logger.error(f"Error during cuML KMeans clustering or database update: {e}")
         db.session.rollback()  # Rollback the session on error
         logger.debug(e, exc_info=True)
 
     finally:
-        h2o.shutdown()  # Shutdown H2O cluster
-        logger.info("H2O cluster shut down after clustering.")
+        logger.info("Completed cuML KMeans clustering.")

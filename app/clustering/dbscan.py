@@ -26,8 +26,10 @@ def perform_dbscan_clustering():
 """
 
 
-import h2o
-from h2o.estimators import H2ODBSCANEstimator
+
+import cudf
+from cuml.cluster import DBSCAN as cuDBSCAN
+from cuml.preprocessing import StandardScaler
 import pandas as pd
 from app import db
 from app.models import SpotifyData
@@ -37,10 +39,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_h2o_dbscan_clustering(uri, engine):
-    h2o.init()  # Initialize H2O cluster
-    logger.info("H2O cluster started.")
-
+def perform_cuml_dbscan_clustering(uri, engine):
     try:
         # Retrieve data from Spotify table using Pandas
         query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
@@ -52,23 +51,26 @@ def perform_h2o_dbscan_clustering(uri, engine):
 
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
-        # Convert Pandas DataFrame to H2OFrame
-        h2o_df = h2o.H2OFrame(df)
+        # Convert Pandas DataFrame to cuDF DataFrame
+        cu_df = cudf.DataFrame.from_records(df)
 
-        # Initialize DBSCAN
-        dbscan = H2ODBSCANEstimator(epsilon=0.5, min_points=5)
-        logger.info("Fitting H2O DBSCAN model...")
+        # Scale features (optional but recommended for clustering)
+        scaler = StandardScaler()
+        scaled_features = scaler.fit_transform(cu_df[['danceability', 'energy', 'tempo', 'valence']])
 
-        # Fit the model to the data
-        dbscan.train(x=['danceability', 'energy', 'tempo', 'valence'], training_frame=h2o_df)
+        # Initialize cuML DBSCAN
+        dbscan = cuDBSCAN(eps=0.5, min_samples=5)  # Adjust parameters as necessary
+        logger.info("Fitting cuML DBSCAN model...")
 
-        logger.info("H2O DBSCAN model fitted successfully.")
+        # Fit the model to the scaled data
+        dbscan.fit(scaled_features)
+        logger.info("cuML DBSCAN model fitted successfully.")
 
         # Get cluster assignments
-        cluster_assignments = dbscan.predict(h2o_df)
+        cluster_assignments = dbscan.labels_
 
         # Add cluster labels to the original DataFrame
-        df['dbscan'] = cluster_assignments['predict'].as_data_frame().values.flatten()
+        df['dbscan'] = cluster_assignments.to_array()
 
         # Bulk update using SQLAlchemy
         session = db.session
@@ -87,11 +89,9 @@ def perform_h2o_dbscan_clustering(uri, engine):
             logger.info(f"Successfully updated {len(updates)} records with DBSCAN labels.")
 
     except Exception as e:
-        logger.error(f"Error during H2O DBSCAN clustering or database update: {e}")
+        logger.error(f"Error during cuML DBSCAN clustering or database update: {e}")
         db.session.rollback()  # Rollback the session on error
         logger.debug(e, exc_info=True)
 
     finally:
-        h2o.shutdown()  # Shutdown H2O cluster
-        logger.info("H2O cluster shut down after clustering.")
-
+        logger.info("Completed cuML DBSCAN Clustering.")

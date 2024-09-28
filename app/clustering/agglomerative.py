@@ -24,8 +24,11 @@ def perform_agglomerative_clustering():
     db.session.commit()
 """
 
-import h2o
-from h2o.estimators import H2OHierarchicalClusteringEstimator
+
+
+import cudf
+from cuml.cluster import AgglomerativeClustering as cuAgglomerativeClustering
+from cuml.preprocessing import StandardScaler
 import pandas as pd
 from app import db
 from app.models import SpotifyData
@@ -36,9 +39,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def perform_agglomerative_clustering(uri, engine):
-    h2o.init()  # Initialize H2O cluster
-    logger.info("H2O cluster started.")
-
     try:
         # Retrieve data from Spotify table using Pandas
         query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
@@ -50,26 +50,26 @@ def perform_agglomerative_clustering(uri, engine):
 
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
-        # Convert Pandas DataFrame to H2OFrame
-        h2o_df = h2o.H2OFrame(df)
+        # Convert Pandas DataFrame to cuDF DataFrame
+        cu_df = cudf.DataFrame.from_records(df)
 
         # Scale features (optional but recommended for clustering)
-        h2o_df_scaled = h2o_df[['danceability', 'energy', 'tempo', 'valence']].scale()
+        scaler = StandardScaler()
+        scaled_features = scaler.fit_transform(cu_df[['danceability', 'energy', 'tempo', 'valence']])
 
-        # Initialize H2O Hierarchical Clustering
-        agglomerative = H2OHierarchicalClusteringEstimator()
-        logger.info("Fitting H2O Agglomerative Clustering model...")
+        # Initialize cuML Agglomerative Clustering
+        agglomerative = cuAgglomerativeClustering(n_clusters=5)  # Set the desired number of clusters
+        logger.info("Fitting cuML Agglomerative Clustering model...")
 
-        # Fit the model to the data
-        agglomerative.train(x=['danceability', 'energy', 'tempo', 'valence'], training_frame=h2o_df_scaled)
-
-        logger.info("H2O Agglomerative Clustering model fitted successfully.")
+        # Fit the model to the scaled data
+        agglomerative.fit(scaled_features)
+        logger.info("cuML Agglomerative Clustering model fitted successfully.")
         
         # Get cluster assignments
-        cluster_assignments = agglomerative.predict(h2o_df_scaled)
-        
+        cluster_assignments = agglomerative.labels_
+
         # Add cluster labels to the original DataFrame
-        df['agglomerative'] = cluster_assignments['predict'].as_data_frame().values.flatten()
+        df['agglomerative'] = cluster_assignments.to_array()
 
         # Bulk update using SQLAlchemy
         session = db.session
@@ -88,11 +88,9 @@ def perform_agglomerative_clustering(uri, engine):
             logger.info(f"Successfully updated {len(updates)} records with Agglomerative Clustering labels.")
 
     except Exception as e:
-        logger.error(f"Error during H2O Agglomerative Clustering or database update: {e}")
+        logger.error(f"Error during cuML Agglomerative Clustering or database update: {e}")
         db.session.rollback()  # Rollback the session on error
         logger.debug(e, exc_info=True)
 
     finally:
-        h2o.shutdown()  # Shutdown H2O cluster
-        logger.info("H2O cluster shut down after clustering.")
-
+        logger.info("Completed cuML Agglomerative Clustering.")
