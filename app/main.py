@@ -60,7 +60,7 @@ def comparison():
 
 
 def initialize_clustering(uri, engine):
-    #perform_kmeans_clustering(uri, engine)
-    perform_dbscan_clustering(uri, engine)
+    perform_kmeans_clustering(uri, engine)
+    #perform_dbscan_clustering(uri, engine)
     #perform_agglomerative_clustering(uri, engine)
 

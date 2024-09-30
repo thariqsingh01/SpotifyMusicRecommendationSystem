@@ -140,9 +140,10 @@ def perform_kmeans_clustering(uri, engine):
         logger.info("Dask client closed after clustering.")
 """
 
-e
-import cudf
-from cuml.cluster import KMeans as cuKMeans
+
+# kmeans.py
+import faiss
+import numpy as np
 import pandas as pd
 from app import db
 from app.models import SpotifyData
@@ -164,22 +165,23 @@ def perform_kmeans_clustering(uri, engine):
 
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
-        # Convert Pandas DataFrame to cuDF DataFrame
-        cu_df = cudf.DataFrame.from_records(df)
+        # Prepare data for Faiss
+        data = df[['danceability', 'energy', 'tempo', 'valence']].values.astype('float32')
 
         # Initialize KMeans
-        kmeans = cuKMeans(n_clusters=5, random_state=42)
-        logger.info("Fitting cuML KMeans model...")
+        n_clusters = 5
+        kmeans = faiss.Kmeans(d=data.shape[1], k=n_clusters)
+        logger.info("Fitting Faiss KMeans model...")
 
         # Fit the model to the data
-        kmeans.fit(cu_df[['danceability', 'energy', 'tempo', 'valence']])
-        logger.info("cuML KMeans model fitted successfully.")
+        kmeans.train(data)
+        logger.info("Faiss KMeans model fitted successfully.")
 
         # Get cluster assignments
-        cluster_assignments = kmeans.predict(cu_df[['danceability', 'energy', 'tempo', 'valence']])
+        distances, cluster_assignments = kmeans.index.search(data, 1)
         
         # Add cluster labels to the original DataFrame
-        df['kmeans'] = cluster_assignments.to_array()
+        df['kmeans'] = cluster_assignments.flatten()
 
         # Bulk update using SQLAlchemy
         session = db.session
@@ -198,9 +200,9 @@ def perform_kmeans_clustering(uri, engine):
             logger.info(f"Successfully updated {len(updates)} records with KMeans labels.")
 
     except Exception as e:
-        logger.error(f"Error during cuML KMeans clustering or database update: {e}")
+        logger.error(f"Error during Faiss KMeans clustering or database update: {e}")
         db.session.rollback()  # Rollback the session on error
         logger.debug(e, exc_info=True)
 
     finally:
-        logger.info("Completed cuML KMeans clustering.")
+        logger.info("Completed Faiss KMeans clustering.")

@@ -25,11 +25,9 @@ def perform_dbscan_clustering():
 
 """
 
-
-
-import cudf
-from cuml.cluster import DBSCAN as cuDBSCAN
-from cuml.preprocessing import StandardScaler
+# dbscan.py
+from sklearn.cluster import DBSCAN
+from sklearn.preprocessing import StandardScaler
 import pandas as pd
 from app import db
 from app.models import SpotifyData
@@ -39,7 +37,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_cuml_dbscan_clustering(uri, engine):
+def perform_dbscan_clustering(uri, engine):
     try:
         # Retrieve data from Spotify table using Pandas
         query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
@@ -51,26 +49,20 @@ def perform_cuml_dbscan_clustering(uri, engine):
 
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
-        # Convert Pandas DataFrame to cuDF DataFrame
-        cu_df = cudf.DataFrame.from_records(df)
-
-        # Scale features (optional but recommended for clustering)
+        # Scale features
         scaler = StandardScaler()
-        scaled_features = scaler.fit_transform(cu_df[['danceability', 'energy', 'tempo', 'valence']])
+        scaled_features = scaler.fit_transform(df[['danceability', 'energy', 'tempo', 'valence']])
 
-        # Initialize cuML DBSCAN
-        dbscan = cuDBSCAN(eps=0.5, min_samples=5)  # Adjust parameters as necessary
-        logger.info("Fitting cuML DBSCAN model...")
+        # Initialize DBSCAN
+        dbscan = DBSCAN(eps=0.5, min_samples=5)  # Adjust parameters as necessary
+        logger.info("Fitting DBSCAN model...")
 
         # Fit the model to the scaled data
-        dbscan.fit(scaled_features)
-        logger.info("cuML DBSCAN model fitted successfully.")
-
-        # Get cluster assignments
-        cluster_assignments = dbscan.labels_
+        cluster_assignments = dbscan.fit_predict(scaled_features)
+        logger.info("DBSCAN model fitted successfully.")
 
         # Add cluster labels to the original DataFrame
-        df['dbscan'] = cluster_assignments.to_array()
+        df['dbscan'] = cluster_assignments
 
         # Bulk update using SQLAlchemy
         session = db.session
@@ -89,9 +81,9 @@ def perform_cuml_dbscan_clustering(uri, engine):
             logger.info(f"Successfully updated {len(updates)} records with DBSCAN labels.")
 
     except Exception as e:
-        logger.error(f"Error during cuML DBSCAN clustering or database update: {e}")
+        logger.error(f"Error during DBSCAN clustering or database update: {e}")
         db.session.rollback()  # Rollback the session on error
         logger.debug(e, exc_info=True)
 
     finally:
-        logger.info("Completed cuML DBSCAN Clustering.")
+        logger.info("Completed DBSCAN Clustering.")

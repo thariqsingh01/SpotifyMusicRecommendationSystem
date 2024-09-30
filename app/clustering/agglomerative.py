@@ -24,11 +24,9 @@ def perform_agglomerative_clustering():
     db.session.commit()
 """
 
-
-
-import cudf
-from cuml.cluster import AgglomerativeClustering as cuAgglomerativeClustering
-from cuml.preprocessing import StandardScaler
+# agglomerative.py
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.preprocessing import StandardScaler
 import pandas as pd
 from app import db
 from app.models import SpotifyData
@@ -50,26 +48,20 @@ def perform_agglomerative_clustering(uri, engine):
 
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
-        # Convert Pandas DataFrame to cuDF DataFrame
-        cu_df = cudf.DataFrame.from_records(df)
-
-        # Scale features (optional but recommended for clustering)
+        # Scale features
         scaler = StandardScaler()
-        scaled_features = scaler.fit_transform(cu_df[['danceability', 'energy', 'tempo', 'valence']])
+        scaled_features = scaler.fit_transform(df[['danceability', 'energy', 'tempo', 'valence']])
 
-        # Initialize cuML Agglomerative Clustering
-        agglomerative = cuAgglomerativeClustering(n_clusters=5)  # Set the desired number of clusters
-        logger.info("Fitting cuML Agglomerative Clustering model...")
+        # Initialize Agglomerative Clustering
+        agglomerative = AgglomerativeClustering(n_clusters=5)
+        logger.info("Fitting Agglomerative Clustering model...")
 
         # Fit the model to the scaled data
-        agglomerative.fit(scaled_features)
-        logger.info("cuML Agglomerative Clustering model fitted successfully.")
+        cluster_assignments = agglomerative.fit_predict(scaled_features)
+        logger.info("Agglomerative Clustering model fitted successfully.")
         
-        # Get cluster assignments
-        cluster_assignments = agglomerative.labels_
-
         # Add cluster labels to the original DataFrame
-        df['agglomerative'] = cluster_assignments.to_array()
+        df['agglomerative'] = cluster_assignments
 
         # Bulk update using SQLAlchemy
         session = db.session
@@ -88,9 +80,9 @@ def perform_agglomerative_clustering(uri, engine):
             logger.info(f"Successfully updated {len(updates)} records with Agglomerative Clustering labels.")
 
     except Exception as e:
-        logger.error(f"Error during cuML Agglomerative Clustering or database update: {e}")
+        logger.error(f"Error during Agglomerative Clustering or database update: {e}")
         db.session.rollback()  # Rollback the session on error
         logger.debug(e, exc_info=True)
 
     finally:
-        logger.info("Completed cuML Agglomerative Clustering.")
+        logger.info("Completed Agglomerative Clustering.")
