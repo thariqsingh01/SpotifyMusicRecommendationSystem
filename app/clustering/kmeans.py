@@ -140,11 +140,10 @@ def perform_kmeans_clustering(uri, engine):
         logger.info("Dask client closed after clustering.")
 """
 
-
-# kmeans.py
 import faiss
-import numpy as np
 import pandas as pd
+import torch
+from dask import dataframe as dd
 from app import db
 from app.models import SpotifyData
 import logging
@@ -153,7 +152,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_kmeans_clustering(uri, engine):
+def perform_kmeans_clustering(uri, engine, n_clusters=5, use_gpu=True):
     try:
         # Retrieve data from Spotify table using Pandas
         query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
@@ -165,20 +164,25 @@ def perform_kmeans_clustering(uri, engine):
 
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
-        # Prepare data for Faiss
-        data = df[['danceability', 'energy', 'tempo', 'valence']].values.astype('float32')
+        # Use Dask to handle large datasets
+        ddf = dd.from_pandas(df, npartitions=10)  # Adjust partitions as needed
+        
+        # Convert to PyTorch tensor (use GPU if available)
+        device = torch.device('cuda' if torch.cuda.is_available() and use_gpu else 'cpu')
+        data = torch.tensor(ddf[['danceability', 'energy', 'tempo', 'valence']].compute().values, dtype=torch.float32).to(device)
 
-        # Initialize KMeans
-        n_clusters = 5
-        kmeans = faiss.Kmeans(d=data.shape[1], k=n_clusters)
+        # Use FAISS's GPU version if available
+        res = faiss.StandardGpuResources() if device.type == 'cuda' else None
+        kmeans = faiss.Kmeans(d=data.shape[1], k=n_clusters, gpu=(device.type == 'cuda'))
+
         logger.info("Fitting Faiss KMeans model...")
-
-        # Fit the model to the data
-        kmeans.train(data)
+        
+        # Move the data back to CPU for FAISS compatibility
+        kmeans.train(data.cpu().numpy())
         logger.info("Faiss KMeans model fitted successfully.")
 
         # Get cluster assignments
-        distances, cluster_assignments = kmeans.index.search(data, 1)
+        _, cluster_assignments = kmeans.index.search(data.cpu().numpy(), 1)
         
         # Add cluster labels to the original DataFrame
         df['kmeans'] = cluster_assignments.flatten()
@@ -193,7 +197,6 @@ def perform_kmeans_clustering(uri, engine):
                 'kmeans': row['kmeans']
             })
 
-        # Bulk insert with SQLAlchemy
         if updates:
             session.bulk_update_mappings(SpotifyData, updates)
             session.commit()
@@ -201,7 +204,7 @@ def perform_kmeans_clustering(uri, engine):
 
     except Exception as e:
         logger.error(f"Error during Faiss KMeans clustering or database update: {e}")
-        db.session.rollback()  # Rollback the session on error
+        db.session.rollback()
         logger.debug(e, exc_info=True)
 
     finally:

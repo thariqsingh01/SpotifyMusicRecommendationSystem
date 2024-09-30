@@ -25,10 +25,11 @@ def perform_dbscan_clustering():
 
 """
 
-# dbscan.py
-from sklearn.cluster import DBSCAN
-from sklearn.preprocessing import StandardScaler
+
+import faiss
+import torch
 import pandas as pd
+from dask import delayed, compute
 from app import db
 from app.models import SpotifyData
 import logging
@@ -37,7 +38,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_dbscan_clustering(uri, engine):
+def perform_dbscan_clustering(uri, engine, eps=0.5, min_samples=5, use_gpu=True):
     try:
         # Retrieve data from Spotify table using Pandas
         query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
@@ -48,21 +49,30 @@ def perform_dbscan_clustering(uri, engine):
             return
 
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
+        
+        # Use Dask to handle large datasets
+        ddf = dd.from_pandas(df, npartitions=10)  # Adjust partitions
 
-        # Scale features
-        scaler = StandardScaler()
-        scaled_features = scaler.fit_transform(df[['danceability', 'energy', 'tempo', 'valence']])
+        # Convert to PyTorch tensor (use GPU if available)
+        device = torch.device('cuda' if torch.cuda.is_available() and use_gpu else 'cpu')
+        data = torch.tensor(ddf[['danceability', 'energy', 'tempo', 'valence']].compute().values, dtype=torch.float32).to(device)
 
-        # Initialize DBSCAN
-        dbscan = DBSCAN(eps=0.5, min_samples=5)  # Adjust parameters as necessary
-        logger.info("Fitting DBSCAN model...")
+        # FAISS for nearest neighbors search
+        index = faiss.IndexFlatL2(data.shape[1])
+        index.add(data.cpu().numpy())
+        distances, neighbors = index.search(data.cpu().numpy(), min_samples)
+        
+        logger.info("FAISS nearest neighbors search completed.")
 
-        # Fit the model to the scaled data
-        cluster_assignments = dbscan.fit_predict(scaled_features)
-        logger.info("DBSCAN model fitted successfully.")
+        # Parallel DBSCAN computation with Dask
+        def dbscan_point(idx, point_neighbors):
+            density = (point_neighbors < eps).sum()
+            return 1 if density >= min_samples else -1  # 1: core point, -1: noise
 
-        # Add cluster labels to the original DataFrame
-        df['dbscan'] = cluster_assignments
+        cluster_labels = [delayed(dbscan_point)(i, distances[i]) for i in range(len(data))]
+        cluster_labels = compute(*cluster_labels)
+
+        df['dbscan'] = cluster_labels
 
         # Bulk update using SQLAlchemy
         session = db.session
@@ -74,7 +84,6 @@ def perform_dbscan_clustering(uri, engine):
                 'dbscan': row['dbscan']
             })
 
-        # Bulk insert with SQLAlchemy
         if updates:
             session.bulk_update_mappings(SpotifyData, updates)
             session.commit()
@@ -82,7 +91,7 @@ def perform_dbscan_clustering(uri, engine):
 
     except Exception as e:
         logger.error(f"Error during DBSCAN clustering or database update: {e}")
-        db.session.rollback()  # Rollback the session on error
+        db.session.rollback()
         logger.debug(e, exc_info=True)
 
     finally:

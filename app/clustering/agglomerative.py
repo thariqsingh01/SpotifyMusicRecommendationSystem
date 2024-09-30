@@ -24,19 +24,22 @@ def perform_agglomerative_clustering():
     db.session.commit()
 """
 
-# agglomerative.py
-from sklearn.cluster import AgglomerativeClustering
-from sklearn.preprocessing import StandardScaler
+
+import faiss
+import torch
 import pandas as pd
+from sklearn.metrics.pairwise import pairwise_distances
+from scipy.cluster.hierarchy import linkage, fcluster
+from dask import dataframe as dd
 from app import db
 from app.models import SpotifyData
 import logging
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_agglomerative_clustering(uri, engine):
+def perform_agglomerative_clustering(uri, engine, n_clusters=5, use_gpu=True):
     try:
         # Retrieve data from Spotify table using Pandas
         query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
@@ -47,20 +50,29 @@ def perform_agglomerative_clustering(uri, engine):
             return
 
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
-
-        # Scale features
-        scaler = StandardScaler()
-        scaled_features = scaler.fit_transform(df[['danceability', 'energy', 'tempo', 'valence']])
-
-        # Initialize Agglomerative Clustering
-        agglomerative = AgglomerativeClustering(n_clusters=5)
-        logger.info("Fitting Agglomerative Clustering model...")
-
-        # Fit the model to the scaled data
-        cluster_assignments = agglomerative.fit_predict(scaled_features)
-        logger.info("Agglomerative Clustering model fitted successfully.")
         
-        # Add cluster labels to the original DataFrame
+        # Use Dask to handle large datasets
+        ddf = dd.from_pandas(df, npartitions=10)
+
+        # Convert to PyTorch tensor (use GPU if available)
+        device = torch.device('cuda' if torch.cuda.is_available() and use_gpu else 'cpu')
+        data = torch.tensor(ddf[['danceability', 'energy', 'tempo', 'valence']].compute().values, dtype=torch.float32).to(device)
+
+        # Use FAISS for nearest neighbors search
+        index = faiss.IndexFlatL2(data.shape[1])
+        index.add(data.cpu().numpy())
+        distances, _ = index.search(data.cpu().numpy(), len(data))
+        
+        logger.info("FAISS nearest neighbors search completed.")
+
+        # Use Dask to compute pairwise distances and linkage
+        pairwise_dists = delayed(pairwise_distances)(data.cpu().numpy())
+        Z = delayed(linkage)(pairwise_dists, method='ward')
+        cluster_assignments = delayed(fcluster)(Z, n_clusters, criterion='maxclust')
+
+        # Compute Dask delayed values
+        cluster_assignments = cluster_assignments.compute()
+
         df['agglomerative'] = cluster_assignments
 
         # Bulk update using SQLAlchemy
@@ -73,7 +85,6 @@ def perform_agglomerative_clustering(uri, engine):
                 'agglomerative': row['agglomerative']
             })
 
-        # Bulk insert with SQLAlchemy
         if updates:
             session.bulk_update_mappings(SpotifyData, updates)
             session.commit()
@@ -81,7 +92,7 @@ def perform_agglomerative_clustering(uri, engine):
 
     except Exception as e:
         logger.error(f"Error during Agglomerative Clustering or database update: {e}")
-        db.session.rollback()  # Rollback the session on error
+        db.session.rollback()
         logger.debug(e, exc_info=True)
 
     finally:
