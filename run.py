@@ -21,4 +21,5 @@ if __name__ == "__main__":
         # Pass both connection_string and engine to the initialize_clustering function
         initialize_clustering(connection_string, engine) 
     
-    app.run()
+    #app.run()
+    app.run(debug=True)

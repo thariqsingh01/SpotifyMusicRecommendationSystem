@@ -1,30 +1,70 @@
-<!--comparison.html-->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clustering Comparison</title>
-    <link rel="stylesheet" href="../static/css/app.css">
+    <title>Clustering Comparison Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 <body>
-    <h1>Clustering Comparison</h1>
-    
-    <h2>K-Means Clustering Recommendations</h2>
-    <div>
-        {{ top_kmeans_html | safe }}
-    </div>
+    <div class="container">
+        <h1>Clustering Comparison Results</h1>
 
-    <h2>DBSCAN Clustering Recommendations</h2>
-    <div>
-        {{ top_dbscan_html | safe }}
-    </div>
+        <!-- KMeans Results Table -->
+        <h2>KMeans Clustering Results</h2>
+        {% if top_kmeans_html %}
+            <div class="table-responsive">
+                {{ top_kmeans_html|safe }}
+            </div>
+        {% else %}
+            <p>No results found for KMeans clustering.</p>
+        {% endif %}
+        
+        <!-- DBSCAN Results Table -->
+        <h2>DBSCAN Clustering Results</h2>
+        {% if top_dbscan_html %}
+            <div class="table-responsive">
+                {{ top_dbscan_html|safe }}
+            </div>
+        {% else %}
+            <p>No results found for DBSCAN clustering.</p>
+        {% endif %}
+        
+        <!-- Agglomerative Results Table -->
+        <h2>Agglomerative Clustering Results</h2>
+        {% if top_agglomerative_html %}
+            <div class="table-responsive">
+                {{ top_agglomerative_html|safe }}
+            </div>
+        {% else %}
+            <p>No results found for Agglomerative clustering.</p>
+        {% endif %}
+        
+        <!-- Section for Graphs -->
+        <h2>Clustering Graphs</h2>
+        <div id="graphs">
+            <h3>KMeans Clustering Graph</h3>
+            {% if kmeans_graph %}
+                <img src="{{ url_for('static', filename='graphs/kmeans_clustering.png') }}" alt="KMeans Clustering Results">
+            {% else %}
+                <p>No graph available for KMeans clustering.</p>
+            {% endif %}
 
-    <h2>Agglomerative Clustering Recommendations</h2>
-    <div>
-        {{ top_agglomerative_html | safe }}
-    </div>
+            <h3>DBSCAN Clustering Graph</h3>
+            {% if dbscan_graph %}
+                <img src="{{ url_for('static', filename='graphs/dbscan_clustering.png') }}" alt="DBSCAN Clustering Results">
+            {% else %}
+                <p>No graph available for DBSCAN clustering.</p>
+            {% endif %}
 
+            <h3>Agglomerative Clustering Graph</h3>
+            {% if agglomerative_graph %}
+                <img src="{{ url_for('static', filename='graphs/agglomerative_clustering.png') }}" alt="Agglomerative Clustering Results">
+            {% else %}
+                <p>No graph available for Agglomerative clustering.</p>
+            {% endif %}
+        </div>
+        
+    </div>
 </body>
 </html>

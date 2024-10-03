@@ -5,24 +5,26 @@ from sklearn.cluster import AgglomerativeClustering
 from app import db
 from app.models import SpotifyData
 import logging
+import matplotlib.pyplot as plt
+import os
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_agglomerative_clustering(uri, engine, n_clusters=5, batch_size=10000):
+def perform_agglomerative_clustering(n_clusters=5, batch_size=10000):
     try:
         # Check if Agglomerative Clustering has already been performed
-        check_query = "SELECT COUNT(*) FROM Spotify WHERE agglomerative IS NOT NULL"
-        result = engine.execute(check_query).scalar()
+        result = db.session.query(SpotifyData).filter(SpotifyData.agglomerative.isnot(None)).count()
 
         if result > 0:
             logger.info(f"Agglomerative clustering already performed on {result} records. Skipping clustering.")
             return
 
         # Retrieve data from Spotify table using Pandas
-        query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
-        df = pd.read_sql(query, engine)
+        df = pd.read_sql(db.session.query(SpotifyData.track_id, SpotifyData.danceability, 
+                                           SpotifyData.energy, SpotifyData.tempo, 
+                                           SpotifyData.valence).statement, db.session.bind)
 
         if df.empty:
             logger.warning("No data retrieved from Spotify table.")
@@ -66,6 +68,32 @@ def perform_agglomerative_clustering(uri, engine, n_clusters=5, batch_size=10000
     finally:
         logger.info("Completed Agglomerative Clustering.")
 
-def retrieve_agglomerative_results(engine):
-    query = "SELECT track_id, agglomerative FROM Spotify WHERE agglomerative IS NOT NULL"
-    return pd.read_sql(query, engine)
+
+def generate_agglomerative_graph():
+    # Retrieve clustered data
+    query = "SELECT danceability, energy, tempo, valence, agglomerative FROM Spotify WHERE agglomerative IS NOT NULL"
+    df = pd.read_sql(query, db.session.bind)
+
+    if df.empty:
+        logger.warning("No Agglomerative results found for graphing.")
+        return
+
+    plt.figure(figsize=(10, 6))
+    plt.scatter(df['danceability'], df['energy'], c=df['agglomerative'], cmap='cividis', alpha=0.5)
+    plt.title('Agglomerative Clustering')
+    plt.xlabel('Danceability')
+    plt.ylabel('Energy')
+    plt.colorbar(label='Cluster')
+    
+    # Ensure the directory exists before saving the figure
+    graph_dir = 'app/static/graphs/'
+    os.makedirs(graph_dir, exist_ok=True)  # Create directory if it doesn't exist
+    graph_path = os.path.join(graph_dir, 'agglomerative_results.png')
+    plt.show()  # Add this before saving the figure
+
+
+    # Save the figure
+    plt.savefig(graph_path)
+    plt.close()
+    logger.info(f"KMeans graph saved at {graph_path}")
+

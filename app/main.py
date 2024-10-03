@@ -1,11 +1,11 @@
-#main.py
+# main.py
 
 from flask import Blueprint, render_template, request
 from .models import SpotifyData
 from app import db
-from .clustering.kmeans import perform_kmeans_clustering,retrieve_kmeans_results
-from .clustering.dbscan import perform_dbscan_clustering,retrieve_dbscan_results
-from .clustering.agglomerative import perform_agglomerative_clustering,retrieve_agglomerative_results
+from .clustering.kmeans import perform_kmeans_clustering, generate_kmeans_graph
+from .clustering.dbscan import perform_dbscan_clustering, generate_dbscan_graph
+from .clustering.agglomerative import perform_agglomerative_clustering, generate_agglomerative_graph
 import pandas as pd
 
 bp = Blueprint('main', __name__)
@@ -28,39 +28,43 @@ def search():
 def home():
     return render_template("app.html")
 
-@bp.route('/comparison')
+@bp.route('/comparison', methods=['GET', 'POST'])
 def comparison():
-    # Get the database engine
-    engine = db.engine  # Adjust this line if your db object is named differently
+    if request.method == 'POST':
+        # Get the database engine
+        engine = db.engine
 
-    # Retrieve clustering results
-    kmeans_results = retrieve_kmeans_results(engine)
-    dbscan_results = retrieve_dbscan_results(engine)
-    agglomerative_results = retrieve_agglomerative_results(engine)
+        #generate graphs
+        generate_kmeans_graph()
+        generate_dbscan_graph()
+        generate_agglomerative_graph()
 
-    # Convert results to DataFrames
-    kmeans_df = kmeans_results[['track_id', 'danceability', 'energy', 'tempo', 'valence', 'kmeans']]
-    dbscan_df = dbscan_results[['track_id', 'danceability', 'energy', 'tempo', 'valence', 'dbscan']]
-    agglomerative_df = agglomerative_results[['track_id', 'danceability', 'energy', 'tempo', 'valence', 'agglomerative']]
+        # Retrieve clustering results
+        kmeans_results = pd.read_sql("SELECT track_id, danceability, energy, tempo, valence, kmeans FROM Spotify WHERE kmeans IS NOT NULL", engine)
+        dbscan_results = pd.read_sql("SELECT track_id, danceability, energy, tempo, valence, dbscan FROM Spotify WHERE dbscan IS NOT NULL", engine)
+        agglomerative_results = pd.read_sql("SELECT track_id, danceability, energy, tempo, valence, agglomerative FROM Spotify WHERE agglomerative IS NOT NULL", engine)
 
-    # Get top 5 recommendations from each clustering technique
-    top_kmeans = kmeans_df.groupby('kmeans').head(5)
-    top_dbscan = dbscan_df.groupby('dbscan').head(5)
-    top_agglomerative = agglomerative_df.groupby('agglomerative').head(5)
+        # Convert results to DataFrames
+        top_kmeans = kmeans_results.groupby('kmeans').head(5)
+        top_dbscan = dbscan_results.groupby('dbscan').head(5)
+        top_agglomerative = agglomerative_results.groupby('agglomerative').head(5)
 
-    # Convert to HTML for rendering
-    top_kmeans_html = top_kmeans.to_html(classes='table table-striped', index=False)
-    top_dbscan_html = top_dbscan.to_html(classes='table table-striped', index=False)
-    top_agglomerative_html = top_agglomerative.to_html(classes='table table-striped', index=False)
+        # Convert to HTML for rendering
+        top_kmeans_html = top_kmeans.to_html(classes='table table-striped', index=False)
+        top_dbscan_html = top_dbscan.to_html(classes='table table-striped', index=False)
+        top_agglomerative_html = top_agglomerative.to_html(classes='table table-striped', index=False)
 
-    return render_template('comparison.html',
-                           top_kmeans_html=top_kmeans_html,
-                           top_dbscan_html=top_dbscan_html,
-                           top_agglomerative_html=top_agglomerative_html)
+        return render_template('comparison.html',
+                               top_kmeans_html=top_kmeans_html,
+                               top_dbscan_html=top_dbscan_html,
+                               top_agglomerative_html=top_agglomerative_html,
+                               kmeans_graph='static/graphs/kmeans_results.png',
+                               dbscan_graph='static/graphs/dbscan_results.png',
+                               agglomerative_graph='static/graphs/agglomerative_results.png')
 
+    return render_template('comparison.html')  # For GET requests, just render an empty comparison page
 
 def initialize_clustering(uri, engine):
-    perform_kmeans_clustering(uri, engine)
-    perform_dbscan_clustering(uri, engine)
-    perform_agglomerative_clustering(uri, engine)
-
+    perform_kmeans_clustering()
+    perform_dbscan_clustering()
+    perform_agglomerative_clustering()

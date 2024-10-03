@@ -1,9 +1,10 @@
-#models.py
+# models.py
 
-from app import db
+from . import db  # Import db from the current package
 
 class SpotifyData(db.Model):
     __tablename__ = 'Spotify'
+    
     number = db.Column(db.Integer)
     artist_name = db.Column(db.String)
     track_name = db.Column(db.String)

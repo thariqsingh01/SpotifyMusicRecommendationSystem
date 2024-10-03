@@ -6,24 +6,26 @@ from app import db
 from app.models import SpotifyData
 import logging
 from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+import os
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_dbscan_clustering(uri, engine, eps=0.05, min_samples=1000, batch_size=10000):
+def perform_dbscan_clustering(eps=0.05, min_samples=1000, batch_size=10000):
     try:
         # Check if DBSCAN clustering has already been performed
-        check_query = "SELECT COUNT(*) FROM Spotify WHERE dbscan IS NOT NULL"
-        result = engine.execute(check_query).scalar()
+        result = db.session.query(SpotifyData).filter(SpotifyData.dbscan.isnot(None)).count()
 
         if result > 0:
             logger.info(f"DBSCAN clustering already performed on {result} records. Skipping clustering.")
             return
 
         # Retrieve data from Spotify table
-        query = "SELECT danceability, energy, tempo, valence, track_id FROM Spotify"
-        df = pd.read_sql(query, engine)
+        df = pd.read_sql(db.session.query(SpotifyData.track_id, SpotifyData.danceability, 
+                                           SpotifyData.energy, SpotifyData.tempo, 
+                                           SpotifyData.valence).statement, db.session.bind)
 
         if df.empty:
             logger.warning("No data retrieved from Spotify table.")
@@ -77,6 +79,30 @@ def perform_dbscan_clustering(uri, engine, eps=0.05, min_samples=1000, batch_siz
     finally:
         logger.info("Completed DBSCAN Clustering.")
 
-def retrieve_dbscan_results(engine):
-    query = "SELECT track_id, dbscan FROM Spotify WHERE dbscan IS NOT NULL"
-    return pd.read_sql(query, engine)
+
+def generate_dbscan_graph():
+    # Retrieve clustered data
+    query = "SELECT danceability, energy, tempo, valence, dbscan FROM Spotify WHERE dbscan IS NOT NULL"
+    df = pd.read_sql(query, db.session.bind)
+
+    if df.empty:
+        logger.warning("No DBSCAN results found for graphing.")
+        return
+
+    plt.figure(figsize=(10, 6))
+    plt.scatter(df['danceability'], df['energy'], c=df['dbscan'], cmap='plasma', alpha=0.5)
+    plt.title('DBSCAN Clustering')
+    plt.xlabel('Danceability')
+    plt.ylabel('Energy')
+    plt.colorbar(label='Cluster')
+
+    # Ensure the directory exists before saving the figure
+    graph_dir = 'app/static/graphs/'
+    os.makedirs(graph_dir, exist_ok=True)  # Create directory if it doesn't exist
+    graph_path = os.path.join(graph_dir, 'dbscan_results.png')
+
+    # Save the figure
+    plt.savefig(graph_path)
+    plt.close()
+    logger.info(f"KMeans graph saved at {graph_path}")
+
