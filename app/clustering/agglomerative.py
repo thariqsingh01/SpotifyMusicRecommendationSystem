@@ -1,5 +1,15 @@
 #agglomerative.py
 
+import pandas as pd
+from sklearn.cluster import AgglomerativeClustering
+from app import db
+from app.models import SpotifyData
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 def perform_agglomerative_clustering(uri, engine, n_clusters=5, batch_size=10000):
     try:
         # Check if Agglomerative Clustering has already been performed
