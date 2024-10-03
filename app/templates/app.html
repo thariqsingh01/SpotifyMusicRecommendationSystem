@@ -1,0 +1,141 @@
+<!--app.html-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recommendify</title>
+    <link rel="stylesheet" href="../static/css/app.css">
+    <script src="https://unpkg.com/htmx.org@2.0.1"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let selectedRow = null;
+
+            // Add click event listener to rows in the search table
+            document.querySelector('#results').addEventListener('click', function(event) {
+                if (event.target.tagName === 'TD') {
+                    if (selectedRow) {
+                        selectedRow.classList.remove('selected');
+                    }
+                    selectedRow = event.target.parentElement;
+                    selectedRow.classList.add('selected');
+                }
+            });
+
+            // Add click event listener to the Add button
+            document.querySelector('#add-button').addEventListener('click', function() {
+                if (selectedRow) {
+                    const cells = selectedRow.getElementsByTagName('td');
+                    const artist = cells[0].textContent;
+                    const songName = cells[1].textContent;
+                    const year = cells[2].textContent;
+                    const genre = cells[3].textContent;
+                    const duration = cells[4].textContent;
+
+                    const tableBody = document.querySelector('#choices');
+                    const newRow = document.createElement('tr');
+                    
+                    newRow.innerHTML = `
+                        <td>${songName}</td>
+                        <td>${artist}</td>
+                        <td><img src="../static/images/bin.png" class="bin-icon" onclick="removeRow(this)"></td>
+                    `;
+                    
+                    tableBody.appendChild(newRow);
+
+                    // Remove selection after adding to choices
+                    selectedRow.classList.remove('selected');
+                    selectedRow = null;
+                }
+            });
+        });
+
+        function removeRow(icon) {
+            icon.parentElement.parentElement.remove();
+        }
+    </script>
+</head>
+<body>
+    <div>
+        <ul class="navbar">
+          <div id="logo-container">
+            <li id="logo"><img src="../static/images/Spotify_Icon_RGB_Green.png" alt="Spotify Logo"></li>
+            <li id="logotext"><h4>Recommendify</h4></li>
+          </div>
+          <div class="nav-links-container">
+            <li class="nav-links"><a href="/comparison">Compare Clustering Results</a></li>
+            <li class="nav-links"><a href="#results">Search</a></li>
+            <li class="nav-links"><a href="#suggestions">Suggestions</a></li>
+            <li class="nav-links"><a href="#choices">Your Choices</a></li>
+          </div>
+        </ul>
+      </div>
+    
+    <div class="spacer"></div> 
+
+    <section class="search">
+        <div class="columns">
+            <div class="column is-one-third is-offset-one-third">
+                <!--htmx below-->
+                <input type="text" class="input" placeholder="Search" name="q" hx-get="/search" hx-trigger="keyup changed delay:500ms" hx-target="#results" onkeyup="console.log('Keyup event triggered')">
+                <button class="button" id="add-button">Add</button>
+                <button class="button" id="search-button">Search</button>
+            </div>
+        </div>
+    
+        <div class="search_table-container">
+            <table class="search_table">
+                <thead>
+                    <tr>
+                        <th>Artist</th>
+                        <th>Song Name</th>
+                        <th>Year</th>
+                        <th>Genre</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody id="results">
+                    <!-- Results will be loaded here dynamically via htmx-->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- New table for suggestions -->
+        <div class="spacer"></div>
+        
+        <h2>Suggestions</h2>
+        <table class="suggestions_table" style="align-items: center;">
+            <thead>
+                <tr>
+                    <th>Artist</th>
+                    <th>Song Name</th>
+                    <th>Year</th>
+                    <th>Genre</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody id="suggestions">
+                <!-- Suggestions will be loaded here -->
+            </tbody>
+        </table>
+
+        <!-- New table for user-added choices -->
+        <div class="spacer"></div> 
+        
+        <h2>Your Choices</h2>
+        <table class="choices_table" style="align-items: center;">
+            <thead>
+                <tr>
+                    <th>Song Name</th>
+                    <th>Artist</th>
+                    <th>Remove</th>
+                </tr>
+            </thead>
+            <tbody id="choices">
+                <!-- User-added choices will be loaded here -->
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>
