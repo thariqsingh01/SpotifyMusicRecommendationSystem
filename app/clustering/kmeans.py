@@ -80,3 +80,7 @@ def perform_kmeans_clustering(uri, engine, n_clusters=5, use_gpu=True):
 
     finally:
         logger.info("Completed Faiss KMeans clustering.")
+
+def retrieve_kmeans_results(engine):
+    query = "SELECT track_id, kmeans FROM Spotify WHERE kmeans IS NOT NULL"
+    return pd.read_sql(query, engine)

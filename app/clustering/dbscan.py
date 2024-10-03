@@ -76,3 +76,7 @@ def perform_dbscan_clustering(uri, engine, eps=0.05, min_samples=1000, batch_siz
 
     finally:
         logger.info("Completed DBSCAN Clustering.")
+
+def retrieve_dbscan_results(engine):
+    query = "SELECT track_id, dbscan FROM Spotify WHERE dbscan IS NOT NULL"
+    return pd.read_sql(query, engine)

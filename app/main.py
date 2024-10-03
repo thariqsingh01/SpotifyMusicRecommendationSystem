@@ -3,9 +3,9 @@
 from flask import Blueprint, render_template, request
 from .models import SpotifyData
 from app import db
-from .clustering.kmeans import perform_kmeans_clustering
-from .clustering.dbscan import perform_dbscan_clustering
-from .clustering.agglomerative import perform_agglomerative_clustering
+from .clustering.kmeans import perform_kmeans_clustering,retrieve_kmeans_results
+from .clustering.dbscan import perform_dbscan_clustering,retrieve_dbscan_results
+from .clustering.agglomerative import perform_agglomerative_clustering,retrieve_agglomerative_results
 import pandas as pd
 
 bp = Blueprint('main', __name__)
@@ -30,28 +30,28 @@ def home():
 
 @bp.route('/comparison')
 def comparison():
-    # Query all data
-    data = SpotifyData.query.all()
+    # Get the database engine
+    engine = db.engine  # Adjust this line if your db object is named differently
 
-    # Extract data for comparison
-    kmeans_results = [(song.track_name, song.artist_name, song.kmeansl) for song in data]
-    dbscan_results = [(song.track_name, song.artist_name, song.dbscan) for song in data]
-    agglomerative_results = [(song.track_name, song.artist_name, song.agglomerative) for song in data]
+    # Retrieve clustering results
+    kmeans_results = retrieve_kmeans_results(engine)
+    dbscan_results = retrieve_dbscan_results(engine)
+    agglomerative_results = retrieve_agglomerative_results(engine)
 
-    # Convert to DataFrame for comparison
-    kmeans_df = pd.DataFrame(kmeans_results, columns=['Track Name', 'Artist', 'Label'])
-    dbscan_df = pd.DataFrame(dbscan_results, columns=['Track Name', 'Artist', 'Label'])
-    agglomerative_df = pd.DataFrame(agglomerative_results, columns=['Track Name', 'Artist', 'Label'])
+    # Convert results to DataFrames
+    kmeans_df = kmeans_results[['track_id', 'danceability', 'energy', 'tempo', 'valence', 'kmeans']]
+    dbscan_df = dbscan_results[['track_id', 'danceability', 'energy', 'tempo', 'valence', 'dbscan']]
+    agglomerative_df = agglomerative_results[['track_id', 'danceability', 'energy', 'tempo', 'valence', 'agglomerative']]
 
     # Get top 5 recommendations from each clustering technique
-    top_kmeans = kmeans_df.groupby('Label').head(5)
-    top_dbscan = dbscan_df.groupby('Label').head(5)
-    top_agglomerative = agglomerative_df.groupby('Label').head(5)
+    top_kmeans = kmeans_df.groupby('kmeans').head(5)
+    top_dbscan = dbscan_df.groupby('dbscan').head(5)
+    top_agglomerative = agglomerative_df.groupby('agglomerative').head(5)
 
     # Convert to HTML for rendering
-    top_kmeans_html = top_kmeans.to_html(classes='table table-striped')
-    top_dbscan_html = top_dbscan.to_html(classes='table table-striped')
-    top_agglomerative_html = top_agglomerative.to_html(classes='table table-striped')
+    top_kmeans_html = top_kmeans.to_html(classes='table table-striped', index=False)
+    top_dbscan_html = top_dbscan.to_html(classes='table table-striped', index=False)
+    top_agglomerative_html = top_agglomerative.to_html(classes='table table-striped', index=False)
 
     return render_template('comparison.html',
                            top_kmeans_html=top_kmeans_html,

@@ -65,3 +65,7 @@ def perform_agglomerative_clustering(uri, engine, n_clusters=5, batch_size=10000
 
     finally:
         logger.info("Completed Agglomerative Clustering.")
+
+def retrieve_agglomerative_results(engine):
+    query = "SELECT track_id, agglomerative FROM Spotify WHERE agglomerative IS NOT NULL"
+    return pd.read_sql(query, engine)
