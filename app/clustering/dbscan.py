@@ -79,27 +79,13 @@ def perform_dbscan_clustering(eps=0.05, min_samples=1000, batch_size=10000):
     finally:
         logger.info("Completed DBSCAN Clustering.")
 
+def generate_dbscan_graph(df):
+    # Log the initial state of the DataFrame for debugging
+    logger.info(f"DataFrame for DBSCAN graph: {df.head()}")
 
-def generate_dbscan_graph():
-    logger.info("Starting DBSCAN graph generation...") 
-    # Retrieve clustered data and counts
-    query = """
-        SELECT dbscan, COUNT(*) as song_count
-        FROM Spotify 
-        WHERE dbscan IS NOT NULL
-        GROUP BY dbscan
-    """
-    cluster_counts = pd.read_sql(query, db.engine)
-
-    logger.info(f"DBSCAN cluster counts: {cluster_counts}")
-
-    if cluster_counts.empty:
+    if df.empty:
         logger.warning("No DBSCAN results found for graphing.")
         return
-
-    # Retrieve the full dataset for plotting
-    query_data = "SELECT danceability, energy, dbscan FROM Spotify WHERE dbscan IS NOT NULL"
-    df = pd.read_sql(query_data, db.engine)
 
     plt.figure(figsize=(10, 6))
     plt.scatter(df['danceability'], df['energy'], c=df['dbscan'], cmap='plasma', alpha=0.5)
@@ -108,20 +94,13 @@ def generate_dbscan_graph():
     plt.ylabel('Energy')
     plt.colorbar(label='Cluster')
 
-    # Ensure the directory exists before saving the figure
     graph_dir = 'app/static/graphs/'
-    os.makedirs(graph_dir, exist_ok=True)  # Create directory if it doesn't exist
+    os.makedirs(graph_dir, exist_ok=True)
     graph_path = os.path.join(graph_dir, 'dbscan_results.png')
 
-    # Save the figure
     try:
         plt.savefig(graph_path)
         logger.info(f"DBSCAN graph saved at {graph_path}")
     except Exception as e:
         logger.error(f"Error saving DBSCAN graph: {e}")
     plt.close()
-
-    # Return cluster counts for rendering
-    return cluster_counts
-
-

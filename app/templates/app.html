@@ -1,5 +1,3 @@
-<!--app.html-->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,6 +45,9 @@
                     // Remove selection after adding to choices
                     selectedRow.classList.remove('selected');
                     selectedRow = null;
+
+                    // Fetch suggestions based on added song (you need to implement this logic)
+                    fetchSuggestions(artist, songName);
                 }
             });
         });
@@ -54,24 +55,38 @@
         function removeRow(icon) {
             icon.parentElement.parentElement.remove();
         }
+
+        function fetchSuggestions(artist, songName) {
+            // Implement the logic to fetch suggestions based on KMeans clustering
+            // For now, we are just logging the artist and songName
+            console.log('Fetching suggestions for:', artist, songName);
+            // You can call an API endpoint to get the suggestions and update the suggestions table
+        }
     </script>
+    <style>
+        .suggestions_table {
+            max-height: 150px; /* Adjust the height for your needs */
+            overflow-y: auto;
+            display: block; /* Ensures it behaves like a block element */
+        }
+    </style>
 </head>
 <body>
     <div>
         <ul class="navbar">
-          <div id="logo-container">
-            <li id="logo"><img src="../static/images/Spotify_Icon_RGB_Green.png" alt="Spotify Logo"></li>
-            <li id="logotext"><h4>Recommendify</h4></li>
-          </div>
-          <div class="nav-links-container">
-            <li class="nav-links"><a href="{{ url_for('main.comparison') }}" class="btn btn-secondary">Compare Clustering Results</a></li>
-            <li class="nav-links"><a href="#results">Search</a></li>
-            <li class="nav-links"><a href="#suggestions">Suggestions</a></li>
-            <li class="nav-links"><a href="#choices">Your Choices</a></li>
-          </div>
+            <div id="logo-container">
+                <li id="logo"><img src="../static/images/Spotify_Icon_RGB_Green.png" alt="Spotify Logo"></li>
+                <li id="logotext"><h4>Recommendify</h4></li>
+            </div>
+            <div class="nav-links-container">
+                <li class="nav-links"><a href="{{ url_for('main.comparison') }}" class="btn btn-secondary">Compare Clustering Results</a></li>
+                <li class="nav-links"><a href="#results">Search</a></li>
+                <li class="nav-links"><a href="#suggestions">Suggestions</a></li>
+                <li class="nav-links"><a href="#choices">Your Choices</a></li>
+            </div>
         </ul>
-      </div>
-    
+    </div>
+
     <div class="spacer"></div> 
 
     <section class="search">
@@ -105,20 +120,30 @@
         <div class="spacer"></div>
         
         <h2>Suggestions</h2>
-        <table class="suggestions_table" style="align-items: center;">
-            <thead>
-                <tr>
-                    <th>Artist</th>
-                    <th>Song Name</th>
-                    <th>Year</th>
-                    <th>Genre</th>
-                    <th>Duration</th>
-                </tr>
-            </thead>
-            <tbody id="suggestions">
-                <!-- Suggestions will be loaded here -->
-            </tbody>
-        </table>
+        <div class="suggestions_table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Artist</th>
+                        <th>Song Name</th>
+                        <th>Year</th>
+                        <th>Genre</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody id="suggestions">
+                    {% for suggestion in suggestions %}
+                    <tr>
+                        <td>{{ suggestion.artist_name }}</td>
+                        <td>{{ suggestion.track_name }}</td>
+                        <td>{{ suggestion.year }}</td>
+                        <td>{{ suggestion.genre }}</td>
+                        <td>{{ suggestion.duration }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         <!-- New table for user-added choices -->
         <div class="spacer"></div> 

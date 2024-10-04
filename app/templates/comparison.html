@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clustering Comparison Results</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    <link rel="stylesheet" href="../static/css/comparison.css">
 </head>
 <body>
     <div class="container">
@@ -12,9 +12,9 @@
 
         <!-- KMeans Results Table -->
         <h2>KMeans Clustering Results</h2>
-        {% if top_kmeans_html %}
+        {% if kmeans_counts %}
             <div class="table-responsive">
-                {{ top_kmeans_html|safe }}
+                {{ kmeans_counts|safe }}
             </div>
         {% else %}
             <p>No results found for KMeans clustering.</p>
@@ -22,9 +22,9 @@
         
         <!-- DBSCAN Results Table -->
         <h2>DBSCAN Clustering Results</h2>
-        {% if top_dbscan_html %}
+        {% if dbscan_counts %}
             <div class="table-responsive">
-                {{ top_dbscan_html|safe }}
+                {{ dbscan_counts|safe }}
             </div>
         {% else %}
             <p>No results found for DBSCAN clustering.</p>
@@ -32,9 +32,9 @@
         
         <!-- Agglomerative Results Table -->
         <h2>Agglomerative Clustering Results</h2>
-        {% if top_agglomerative_html %}
+        {% if agglomerative_counts %}
             <div class="table-responsive">
-                {{ top_agglomerative_html|safe }}
+                {{ agglomerative_counts|safe }}
             </div>
         {% else %}
             <p>No results found for Agglomerative clustering.</p>
@@ -45,21 +45,21 @@
         <div id="graphs">
             <h3>KMeans Clustering Graph</h3>
             {% if kmeans_graph %}
-                <img src="{{ url_for('static', filename='graphs/kmeans_results.png') }}" alt="KMeans Clustering Results">
+                <img src="{{ url_for('static', filename='graphs/kmeans_results.png') }}" alt="KMeans Clustering Graph">
             {% else %}
                 <p>No graph available for KMeans clustering.</p>
             {% endif %}
 
             <h3>DBSCAN Clustering Graph</h3>
             {% if dbscan_graph %}
-                <img src="{{ url_for('static', filename='graphs/dbscan_results.png') }}" alt="DBSCAN Clustering Results">
+                <img src="{{ url_for('static', filename='graphs/dbscan_results.png') }}" alt="DBSCAN Clustering Graph">
             {% else %}
                 <p>No graph available for DBSCAN clustering.</p>
             {% endif %}
 
             <h3>Agglomerative Clustering Graph</h3>
             {% if agglomerative_graph %}
-                <img src="{{ url_for('static', filename='graphs/agglomerative_results.png') }}" alt="Agglomerative Clustering Results">
+                <img src="{{ url_for('static', filename='graphs/agglomerative_results.png') }}" alt="Agglomerative Clustering Graph">
             {% else %}
                 <p>No graph available for Agglomerative clustering.</p>
             {% endif %}

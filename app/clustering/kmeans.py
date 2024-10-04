@@ -72,26 +72,13 @@ def perform_kmeans_clustering(n_clusters=5, batch_size=10000):
     finally:
         logger.info("Completed KMeans Clustering.")
 
-def generate_kmeans_graph():
-    logger.info("Starting KMeans graph generation...") 
-    # Retrieve clustered data and counts
-    query = """
-        SELECT kmeans, COUNT(*) as song_count
-        FROM Spotify 
-        WHERE kmeans IS NOT NULL
-        GROUP BY kmeans
-    """
-    cluster_counts = pd.read_sql(query, db.engine)
+def generate_kmeans_graph(df):
+    # Log the initial state of the DataFrame for debugging
+    logger.info(f"DataFrame for KMeans graph: {df.head()}")
 
-    logger.info(f"KMeans cluster counts: {cluster_counts}")
-
-    if cluster_counts.empty:
+    if df.empty:
         logger.warning("No KMeans results found for graphing.")
         return
-
-    # Retrieve the full dataset for plotting
-    query_data = "SELECT danceability, energy, kmeans FROM Spotify WHERE kmeans IS NOT NULL"
-    df = pd.read_sql(query_data, db.engine)
 
     plt.figure(figsize=(10, 6))
     plt.scatter(df['danceability'], df['energy'], c=df['kmeans'], cmap='viridis', alpha=0.5)
@@ -100,18 +87,13 @@ def generate_kmeans_graph():
     plt.ylabel('Energy')
     plt.colorbar(label='Cluster')
 
-    # Ensure the directory exists before saving the figure
     graph_dir = 'app/static/graphs/'
-    os.makedirs(graph_dir, exist_ok=True)  # Create directory if it doesn't exist
+    os.makedirs(graph_dir, exist_ok=True)
     graph_path = os.path.join(graph_dir, 'kmeans_results.png')
 
-    # Save the figure
     try:
         plt.savefig(graph_path)
         logger.info(f"KMeans graph saved at {graph_path}")
     except Exception as e:
         logger.error(f"Error saving KMeans graph: {e}")
     plt.close()
-
-    # Return cluster counts for rendering
-    return cluster_counts
