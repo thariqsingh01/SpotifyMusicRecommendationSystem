@@ -81,13 +81,25 @@ def perform_dbscan_clustering(eps=0.05, min_samples=1000, batch_size=10000):
 
 
 def generate_dbscan_graph():
-    # Retrieve clustered data
-    query = "SELECT danceability, energy, tempo, valence, dbscan FROM Spotify WHERE dbscan IS NOT NULL"
-    df = pd.read_sql(query, db.session.bind)
+    logger.info("Starting DBSCAN graph generation...") 
+    # Retrieve clustered data and counts
+    query = """
+        SELECT dbscan, COUNT(*) as song_count
+        FROM Spotify 
+        WHERE dbscan IS NOT NULL
+        GROUP BY dbscan
+    """
+    cluster_counts = pd.read_sql(query, db.engine)
 
-    if df.empty:
+    logger.info(f"DBSCAN cluster counts: {cluster_counts}")
+
+    if cluster_counts.empty:
         logger.warning("No DBSCAN results found for graphing.")
         return
+
+    # Retrieve the full dataset for plotting
+    query_data = "SELECT danceability, energy, dbscan FROM Spotify WHERE dbscan IS NOT NULL"
+    df = pd.read_sql(query_data, db.engine)
 
     plt.figure(figsize=(10, 6))
     plt.scatter(df['danceability'], df['energy'], c=df['dbscan'], cmap='plasma', alpha=0.5)
@@ -102,7 +114,14 @@ def generate_dbscan_graph():
     graph_path = os.path.join(graph_dir, 'dbscan_results.png')
 
     # Save the figure
-    plt.savefig(graph_path)
+    try:
+        plt.savefig(graph_path)
+        logger.info(f"DBSCAN graph saved at {graph_path}")
+    except Exception as e:
+        logger.error(f"Error saving DBSCAN graph: {e}")
     plt.close()
-    logger.info(f"KMeans graph saved at {graph_path}")
+
+    # Return cluster counts for rendering
+    return cluster_counts
+
 

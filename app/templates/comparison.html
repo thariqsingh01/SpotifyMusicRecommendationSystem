@@ -45,21 +45,21 @@
         <div id="graphs">
             <h3>KMeans Clustering Graph</h3>
             {% if kmeans_graph %}
-                <img src="{{ url_for('static', filename='graphs/kmeans_clustering.png') }}" alt="KMeans Clustering Results">
+                <img src="{{ url_for('static', filename='graphs/kmeans_results.png') }}" alt="KMeans Clustering Results">
             {% else %}
                 <p>No graph available for KMeans clustering.</p>
             {% endif %}
 
             <h3>DBSCAN Clustering Graph</h3>
             {% if dbscan_graph %}
-                <img src="{{ url_for('static', filename='graphs/dbscan_clustering.png') }}" alt="DBSCAN Clustering Results">
+                <img src="{{ url_for('static', filename='graphs/dbscan_results.png') }}" alt="DBSCAN Clustering Results">
             {% else %}
                 <p>No graph available for DBSCAN clustering.</p>
             {% endif %}
 
             <h3>Agglomerative Clustering Graph</h3>
             {% if agglomerative_graph %}
-                <img src="{{ url_for('static', filename='graphs/agglomerative_clustering.png') }}" alt="Agglomerative Clustering Results">
+                <img src="{{ url_for('static', filename='graphs/agglomerative_results.png') }}" alt="Agglomerative Clustering Results">
             {% else %}
                 <p>No graph available for Agglomerative clustering.</p>
             {% endif %}

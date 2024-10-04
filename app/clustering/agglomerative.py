@@ -70,13 +70,25 @@ def perform_agglomerative_clustering(n_clusters=5, batch_size=10000):
 
 
 def generate_agglomerative_graph():
-    # Retrieve clustered data
-    query = "SELECT danceability, energy, tempo, valence, agglomerative FROM Spotify WHERE agglomerative IS NOT NULL"
-    df = pd.read_sql(query, db.session.bind)
+    logger.info("Starting Agglomerative graph generation...") 
+    # Retrieve clustered data and counts
+    query = """
+        SELECT agglomerative, COUNT(*) as song_count
+        FROM Spotify 
+        WHERE agglomerative IS NOT NULL
+        GROUP BY agglomerative
+    """
+    cluster_counts = pd.read_sql(query, db.engine)
 
-    if df.empty:
+    logger.info(f"Agglomerative cluster counts: {cluster_counts}")
+
+    if cluster_counts.empty:
         logger.warning("No Agglomerative results found for graphing.")
         return
+
+    # Retrieve the full dataset for plotting
+    query_data = "SELECT danceability, energy, agglomerative FROM Spotify WHERE agglomerative IS NOT NULL"
+    df = pd.read_sql(query_data, db.engine)
 
     plt.figure(figsize=(10, 6))
     plt.scatter(df['danceability'], df['energy'], c=df['agglomerative'], cmap='cividis', alpha=0.5)
@@ -84,16 +96,20 @@ def generate_agglomerative_graph():
     plt.xlabel('Danceability')
     plt.ylabel('Energy')
     plt.colorbar(label='Cluster')
-    
+
     # Ensure the directory exists before saving the figure
     graph_dir = 'app/static/graphs/'
     os.makedirs(graph_dir, exist_ok=True)  # Create directory if it doesn't exist
     graph_path = os.path.join(graph_dir, 'agglomerative_results.png')
-    plt.show()  # Add this before saving the figure
-
 
     # Save the figure
-    plt.savefig(graph_path)
+    try:
+        plt.savefig(graph_path)
+        logger.info(f"Agglomerative graph saved at {graph_path}")
+    except Exception as e:
+        logger.error(f"Error saving Agglomerative graph: {e}")
     plt.close()
-    logger.info(f"KMeans graph saved at {graph_path}")
+
+    # Return cluster counts for rendering
+    return cluster_counts
 

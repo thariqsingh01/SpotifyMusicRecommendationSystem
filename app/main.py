@@ -1,6 +1,6 @@
 # main.py
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, current_app
 from .models import SpotifyData
 from app import db
 from .clustering.kmeans import perform_kmeans_clustering, generate_kmeans_graph
@@ -30,14 +30,14 @@ def home():
 
 @bp.route('/comparison', methods=['GET', 'POST'])
 def comparison():
-    if request.method == 'POST':
+    with current_app.app_context():
         # Get the database engine
         engine = db.engine
 
-        #generate graphs
-        generate_kmeans_graph()
-        generate_dbscan_graph()
-        generate_agglomerative_graph()
+        # Generate graphs and retrieve cluster counts
+        kmeans_counts = generate_kmeans_graph()
+        dbscan_counts = generate_dbscan_graph()
+        agglomerative_counts = generate_agglomerative_graph()
 
         # Retrieve clustering results
         kmeans_results = pd.read_sql("SELECT track_id, danceability, energy, tempo, valence, kmeans FROM Spotify WHERE kmeans IS NOT NULL", engine)
@@ -54,15 +54,17 @@ def comparison():
         top_dbscan_html = top_dbscan.to_html(classes='table table-striped', index=False)
         top_agglomerative_html = top_agglomerative.to_html(classes='table table-striped', index=False)
 
+        # Render the template with the data
         return render_template('comparison.html',
                                top_kmeans_html=top_kmeans_html,
                                top_dbscan_html=top_dbscan_html,
                                top_agglomerative_html=top_agglomerative_html,
                                kmeans_graph='static/graphs/kmeans_results.png',
                                dbscan_graph='static/graphs/dbscan_results.png',
-                               agglomerative_graph='static/graphs/agglomerative_results.png')
-
-    return render_template('comparison.html')  # For GET requests, just render an empty comparison page
+                               agglomerative_graph='static/graphs/agglomerative_results.png',
+                               kmeans_counts=kmeans_counts.to_html(classes='table table-striped', index=False),
+                               dbscan_counts=dbscan_counts.to_html(classes='table table-striped', index=False),
+                               agglomerative_counts=agglomerative_counts.to_html(classes='table table-striped', index=False))
 
 def initialize_clustering(uri, engine):
     perform_kmeans_clustering()
