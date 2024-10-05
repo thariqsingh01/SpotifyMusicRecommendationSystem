@@ -40,6 +40,16 @@
             <p>No results found for Agglomerative clustering.</p>
         {% endif %}
         
+        <!-- CNN Results Table -->
+        <h2>CNN Clustering Results</h2>
+        {% if cnn_counts %}
+            <div class="table-responsive">
+                {{ cnn_counts|safe }}
+            </div>
+        {% else %}
+            <p>No results found for CNN clustering.</p>
+        {% endif %}
+        
         <!-- Section for Graphs -->
         <h2>Clustering Graphs</h2>
         <div id="graphs">
@@ -62,6 +72,13 @@
                 <img src="{{ url_for('static', filename='graphs/agglomerative_results.png') }}" alt="Agglomerative Clustering Graph">
             {% else %}
                 <p>No graph available for Agglomerative clustering.</p>
+            {% endif %}
+
+            <h3>CNN Clustering Graph</h3>
+            {% if cnn_graph %}
+                <img src="{{ url_for('static', filename='graphs/cnn_results.png') }}" alt="CNN Clustering Graph">
+            {% else %}
+                <p>No graph available for CNN clustering.</p>
             {% endif %}
         </div>
         

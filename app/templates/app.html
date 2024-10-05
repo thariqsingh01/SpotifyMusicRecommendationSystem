@@ -57,11 +57,25 @@
         }
 
         function fetchSuggestions(artist, songName) {
-            // Implement the logic to fetch suggestions based on KMeans clustering
-            // For now, we are just logging the artist and songName
-            console.log('Fetching suggestions for:', artist, songName);
-            // You can call an API endpoint to get the suggestions and update the suggestions table
-        }
+    fetch(`/get_suggestions?artist=${encodeURIComponent(artist)}&songName=${encodeURIComponent(songName)}`)
+        .then(response => response.json())
+        .then(data => {
+            const suggestionsTable = document.querySelector('#suggestions');
+            suggestionsTable.innerHTML = '';
+            data.suggestions.forEach(suggestion => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${suggestion.artist}</td>
+                    <td>${suggestion.song}</td>
+                    <td>${suggestion.year}</td>
+                    <td>${suggestion.genre}</td>
+                    <td>${suggestion.duration}</td>
+                `;
+                suggestionsTable.appendChild(row);
+            });
+        });
+}
+
     </script>
     <style>
         .suggestions_table {

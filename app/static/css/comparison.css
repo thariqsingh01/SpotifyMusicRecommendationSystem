@@ -1,76 +1,73 @@
-/* comparison.css */
-
 body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-  }
-  
-  /* Container styling */
-  .container {
-    padding: 20px;
-  }
-  
-  /* Heading */
-  h1 {
-    text-align: center;
-    font-size: 2em;
-    color: #333;
-  }
-  
-  h2 {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 1.5em;
-    color: #333;
-  }
-  
-  /* Responsive table */
-  .table-responsive {
-    margin: 20px auto;
-    overflow-x: auto; /* Allow horizontal scrolling */
-    max-width: 90%; /* Responsive width */
-  }
-  
-  /* General table styling */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  
-  th, td {
-    border: 1px solid #ddd;
-    padding: 12px;
-    text-align: left;
-  }
-  
-  th {
-    background-color: #333;
-    color: white;
-  }
-  
-  tr:nth-child(even) {
-    background-color: #f9f9f9;
-  }
-  
-  tr:hover {
-    background-color: #f1f1f1;
-  }
-  
-  /* Graphs section */
-  #graphs {
-    margin-top: 40px;
-    text-align: center;
-  }
-  
-  #graphs img {
-    max-width: 80%; /* Responsive image size */
-    height: auto;
-    margin: 10px 0; /* Add some spacing between images */
-  }
-  
-  /* Messages */
-  p {
-    text-align: center;
-    color: #666;
-  }
-  
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+/* Container styling */
+.container {
+  padding: 20px;
+}
+
+/* Heading */
+h1 {
+  text-align: center;
+  font-size: 2em;
+  color: #333;
+}
+
+h2 {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 1.5em;
+  color: #333;
+}
+
+/* Responsive table */
+.table-responsive {
+  margin: 20px auto;
+  overflow-x: auto; /* Allow horizontal scrolling */
+  max-width: 90%; /* Responsive width */
+}
+
+/* General table styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+}
+
+th {
+  background-color: #333;
+  color: white;
+}
+
+tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+tr:hover {
+  background-color: #f1f1f1;
+}
+
+/* Graphs section */
+#graphs {
+  margin-top: 40px;
+  text-align: center;
+}
+
+#graphs img {
+  max-width: 80%; /* Responsive image size */
+  height: auto;
+  margin: 10px 0; /* Add some spacing between images */
+}
+
+/* Messages */
+p {
+  text-align: center;
+  color: #666;
+}

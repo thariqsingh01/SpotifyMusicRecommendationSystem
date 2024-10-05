@@ -1,11 +1,10 @@
-# main.py
-
-from flask import Flask,Blueprint, render_template, request, current_app
+from flask import Flask, Blueprint, render_template, request, current_app
 from .models import SpotifyData
 from app import db
 from .clustering.kmeans import perform_kmeans_clustering, generate_kmeans_graph
 from .clustering.dbscan import perform_dbscan_clustering, generate_dbscan_graph
 from .clustering.agglomerative import perform_agglomerative_clustering, generate_agglomerative_graph
+from .clustering.cnn import generate_cnn_graph  # Import CNN graph generation
 import pandas as pd
 import logging
 from flask_caching import Cache
@@ -65,8 +64,6 @@ def suggestions():
 
     return jsonify({'suggestions': suggestions_list}), 200
 
-
-
 @bp.route('/')
 def home():
     return render_template("app.html")
@@ -86,11 +83,13 @@ def comparison():
                 dbscan AS dbscan_group, 
                 COUNT(dbscan) AS dbscan_count, 
                 agglomerative AS agglomerative_group, 
-                COUNT(agglomerative) AS agglomerative_count
+                COUNT(agglomerative) AS agglomerative_count,
+                cnn AS cnn_group, 
+                COUNT(cnn) AS cnn_count
             FROM Spotify
-            WHERE kmeans IS NOT NULL OR dbscan IS NOT NULL OR agglomerative IS NOT NULL
-            GROUP BY kmeans, dbscan, agglomerative
-            ORDER BY kmeans, dbscan, agglomerative
+            WHERE kmeans IS NOT NULL OR dbscan IS NOT NULL OR agglomerative IS NOT NULL OR cnn IS NOT NULL
+            GROUP BY kmeans, dbscan, agglomerative, cnn
+            ORDER BY kmeans, dbscan, agglomerative, cnn
         """
 
         # Execute the query and convert the results to a DataFrame
@@ -100,27 +99,37 @@ def comparison():
         kmeans_counts_html = combined_results[['kmeans_group', 'kmeans_count']].dropna().to_html(classes='table table-striped', index=False)
         dbscan_counts_html = combined_results[['dbscan_group', 'dbscan_count']].dropna().to_html(classes='table table-striped', index=False)
         agglomerative_counts_html = combined_results[['agglomerative_group', 'agglomerative_count']].dropna().to_html(classes='table table-striped', index=False)
+        cnn_counts_html = combined_results[['cnn_group', 'cnn_count']].dropna().to_html(classes='table table-striped', index=False)
 
         # Prepare DataFrames for plotting
         df_kmeans = pd.read_sql("SELECT danceability, energy, kmeans FROM Spotify WHERE kmeans IS NOT NULL", engine)
         df_dbscan = pd.read_sql("SELECT danceability, energy, dbscan FROM Spotify WHERE dbscan IS NOT NULL", engine)
         df_agglomerative = pd.read_sql("SELECT danceability, energy, agglomerative FROM Spotify WHERE agglomerative IS NOT NULL", engine)
+        df_cnn = pd.read_sql("SELECT danceability, energy, cnn FROM Spotify WHERE cnn IS NOT NULL", engine)
 
-        # Call the graph generation functions
+        # Generate graphs
         generate_kmeans_graph(df_kmeans)
         generate_dbscan_graph(df_dbscan)
         generate_agglomerative_graph(df_agglomerative)
+        generate_cnn_graph(df_cnn)  # New CNN graph generation
 
-        # Render the template with the data
-        return render_template(
-            'comparison.html',
-            kmeans_graph='static/graphs/kmeans_results.png',
-            dbscan_graph='static/graphs/dbscan_results.png',
-            agglomerative_graph='static/graphs/agglomerative_results.png',
-            kmeans_counts=kmeans_counts_html,
-            dbscan_counts=dbscan_counts_html,
-            agglomerative_counts=agglomerative_counts_html
-        )
+        # Set paths for graph images
+        kmeans_graph = '/static/graphs/kmeans_results.png'
+        dbscan_graph = '/static/graphs/dbscan_results.png'
+        agglomerative_graph = '/static/graphs/agglomerative_results.png'
+        cnn_graph = '/static/graphs/cnn_results.png'  # Path for CNN graph
+
+        return render_template('comparison.html',
+                               kmeans_counts=kmeans_counts_html,
+                               dbscan_counts=dbscan_counts_html,
+                               agglomerative_counts=agglomerative_counts_html,
+                               cnn_counts=cnn_counts_html,
+                               kmeans_graph=kmeans_graph,
+                               dbscan_graph=dbscan_graph,
+                               agglomerative_graph=agglomerative_graph,
+                               cnn_graph=cnn_graph)
+
+app.register_blueprint(bp)
 
 def initialize_clustering(uri, engine):
     perform_kmeans_clustering()
