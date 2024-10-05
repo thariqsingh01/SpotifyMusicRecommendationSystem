@@ -4,7 +4,7 @@ from app import db
 from .clustering.kmeans import perform_kmeans_clustering, generate_kmeans_graph
 from .clustering.dbscan import perform_dbscan_clustering, generate_dbscan_graph
 from .clustering.agglomerative import perform_agglomerative_clustering, generate_agglomerative_graph
-from .clustering.cnn import generate_cnn_graph  # Import CNN graph generation
+from .clustering.comparison import generate_cnn_graph  # Import CNN graph generation
 import pandas as pd
 import logging
 from flask_caching import Cache
@@ -75,59 +75,71 @@ def comparison():
         # Get the database engine
         engine = db.engine
 
-        # Single query to retrieve cluster groups and their counts for all algorithms
+        # Single query to retrieve cluster groups and their counts for KMeans, DBSCAN, and Agglomerative
         cluster_query = """
             SELECT 
-                kmeans AS kmeans_group, 
-                COUNT(kmeans) AS kmeans_count, 
-                dbscan AS dbscan_group, 
-                COUNT(dbscan) AS dbscan_count, 
-                agglomerative AS agglomerative_group, 
-                COUNT(agglomerative) AS agglomerative_count,
-                cnn AS cnn_group, 
-                COUNT(cnn) AS cnn_count
+                kmeans AS cluster_group, 
+                COUNT(*) AS count, 
+                'KMeans' AS algorithm
             FROM Spotify
-            WHERE kmeans IS NOT NULL OR dbscan IS NOT NULL OR agglomerative IS NOT NULL OR cnn IS NOT NULL
-            GROUP BY kmeans, dbscan, agglomerative, cnn
-            ORDER BY kmeans, dbscan, agglomerative, cnn
+            WHERE kmeans IS NOT NULL
+            GROUP BY kmeans
+
+            UNION ALL
+
+            SELECT 
+                dbscan AS cluster_group, 
+                COUNT(*) AS count, 
+                'DBSCAN' AS algorithm
+            FROM Spotify
+            WHERE dbscan IS NOT NULL
+            GROUP BY dbscan
+
+            UNION ALL
+
+            SELECT 
+                agglomerative AS cluster_group, 
+                COUNT(*) AS count, 
+                'Agglomerative' AS algorithm
+            FROM Spotify
+            WHERE agglomerative IS NOT NULL
+            GROUP BY agglomerative
+
+            ORDER BY algorithm, cluster_group;
         """
 
         # Execute the query and convert the results to a DataFrame
         combined_results = pd.read_sql(cluster_query, engine)
 
         # Separate DataFrames for each algorithm's counts
-        kmeans_counts_html = combined_results[['kmeans_group', 'kmeans_count']].dropna().to_html(classes='table table-striped', index=False)
-        dbscan_counts_html = combined_results[['dbscan_group', 'dbscan_count']].dropna().to_html(classes='table table-striped', index=False)
-        agglomerative_counts_html = combined_results[['agglomerative_group', 'agglomerative_count']].dropna().to_html(classes='table table-striped', index=False)
-        cnn_counts_html = combined_results[['cnn_group', 'cnn_count']].dropna().to_html(classes='table table-striped', index=False)
+        kmeans_counts_html = combined_results[combined_results['algorithm'] == 'KMeans'][['cluster_group', 'count']].dropna().to_html(classes='table table-striped', index=False)
+        dbscan_counts_html = combined_results[combined_results['algorithm'] == 'DBSCAN'][['cluster_group', 'count']].dropna().to_html(classes='table table-striped', index=False)
+        agglomerative_counts_html = combined_results[combined_results['algorithm'] == 'Agglomerative'][['cluster_group', 'count']].dropna().to_html(classes='table table-striped', index=False)
 
         # Prepare DataFrames for plotting
         df_kmeans = pd.read_sql("SELECT danceability, energy, kmeans FROM Spotify WHERE kmeans IS NOT NULL", engine)
         df_dbscan = pd.read_sql("SELECT danceability, energy, dbscan FROM Spotify WHERE dbscan IS NOT NULL", engine)
         df_agglomerative = pd.read_sql("SELECT danceability, energy, agglomerative FROM Spotify WHERE agglomerative IS NOT NULL", engine)
-        df_cnn = pd.read_sql("SELECT danceability, energy, cnn FROM Spotify WHERE cnn IS NOT NULL", engine)
 
         # Generate graphs
         generate_kmeans_graph(df_kmeans)
         generate_dbscan_graph(df_dbscan)
         generate_agglomerative_graph(df_agglomerative)
-        generate_cnn_graph(df_cnn)  # New CNN graph generation
 
         # Set paths for graph images
         kmeans_graph = '/static/graphs/kmeans_results.png'
         dbscan_graph = '/static/graphs/dbscan_results.png'
         agglomerative_graph = '/static/graphs/agglomerative_results.png'
-        cnn_graph = '/static/graphs/cnn_results.png'  # Path for CNN graph
 
         return render_template('comparison.html',
                                kmeans_counts=kmeans_counts_html,
                                dbscan_counts=dbscan_counts_html,
                                agglomerative_counts=agglomerative_counts_html,
-                               cnn_counts=cnn_counts_html,
                                kmeans_graph=kmeans_graph,
                                dbscan_graph=dbscan_graph,
-                               agglomerative_graph=agglomerative_graph,
-                               cnn_graph=cnn_graph)
+                               agglomerative_graph=agglomerative_graph)
+
+
 
 app.register_blueprint(bp)
 
