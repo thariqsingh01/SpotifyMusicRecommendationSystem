@@ -31,10 +31,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 bp = Blueprint('main', __name__)
-#app.register_blueprint(bp)
 
 @app.route('/search', methods=['GET'])
 def search():
+    import ipdb; ipdb.set_trace()
+    print("Search route triggered!")
     query = request.args.get('q')
     logger.info(f'Full request URL: {request.url}')  # Log the full request URL
     logger.info(f'Search query received: {query}')  # Log the search query
@@ -53,7 +54,7 @@ def search():
         logger.info('No results matched the query.')
     
     # Render only the table rows for the HTMX request
-    return render_template('partials/_search_results.html', results=results)
+    return render_template('partials/results.html', results=results)
 
 def get_recommendations(user_choices):
     # Fetch recommendations based on user choices from the database
@@ -192,6 +193,8 @@ def comparison():
                                kmeans_graph=kmeans_graph,
                                dbscan_graph=dbscan_graph,
                                agglomerative_graph=agglomerative_graph)
+
+app.register_blueprint(bp)
 
 def initialize_clustering(uri, engine):
     perform_kmeans_clustering()

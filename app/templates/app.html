@@ -101,13 +101,15 @@
     </div>
 
     <div class="spacer"></div> 
+    <div id="search-loading" class="loading-indicator">
+        <span>Loading...</span>
+    </div>
 
     <section class="search">
         <div class="columns">
             <div class="column is-one-third is-offset-one-third">
-                <input type="text" class="input" placeholder="Search" name="q" 
-                       hx-get="/search" hx-trigger="keyup changed delay:500ms" hx-target="#results" 
-                       onkeyup="console.log('Keyup event triggered')">
+                <input type="text" class="input" placeholder="Search" name="q" hx-get="/search" hx-trigger="keyup changed delay:500ms" hx-target="#results"   
+                  hx-indicator="#search-loading" onkeyup="console.log('Keyup event triggered')">
                 <button class="button" id="add-button">Add</button>
                 <button class="button" id="search-button">Search</button>
             </div>
@@ -130,6 +132,7 @@
             </table>
         </div>
     </section>
+    
     
 
         <!-- New table for suggestions -->
