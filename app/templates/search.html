@@ -9,5 +9,8 @@
         <td>{{ result.genre }}</td>
         <td>{{ result.duration_in_minutes_seconds() }}</td>
     </tr>
+{% else %}
+    <tr>
+        <td colspan="5">No results found.</td>
+    </tr>
 {% endfor %}
-

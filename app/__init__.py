@@ -29,7 +29,7 @@ def create_app(uri=None):
         # Optional: Create tables if not exist
         db.create_all()
 
-        # Register the main blueprint
+        # Register the main blueprint here
         from .main import bp as main_bp
         app.register_blueprint(main_bp)
 

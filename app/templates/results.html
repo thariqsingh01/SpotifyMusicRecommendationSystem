@@ -1,24 +1,27 @@
-<!--results.html-->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clustering Comparison</title>
-    <link rel="stylesheet" href="../static/css/app.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/results.css') }}">
+    <title>Results</title>
 </head>
 <body>
-    <h1>Clustering Comparison</h1>
+    <h1>Recommended Songs</h1>
     
-    <h2>K-Means Clustering Results</h2>
-    <!-- Display K-Means results here -->
-    
-    <h2>DBSCAN Clustering Results</h2>
-    <!-- Display DBSCAN results here -->
-    
-    <h2>Agglomerative Clustering Results</h2>
-    <!-- Display Agglomerative results here -->
-
+    {% for algorithm, songs in recommendations.items() %}
+    <h2>{{ algorithm }} Recommendations</h2>
+    <div class="recommendations">
+        {% for song in songs %}
+        <div class="recommendation">
+            <img src="{{ song.album_cover }}" alt="Album Cover" class="album-cover">
+            <div class="song-info">
+                <h3>{{ song.track_name }}</h3>
+                <p>{{ song.artist_name }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
 </body>
 </html>

@@ -57,25 +57,24 @@
         }
 
         function fetchSuggestions(artist, songName) {
-    fetch(`/get_suggestions?artist=${encodeURIComponent(artist)}&songName=${encodeURIComponent(songName)}`)
-        .then(response => response.json())
-        .then(data => {
-            const suggestionsTable = document.querySelector('#suggestions');
-            suggestionsTable.innerHTML = '';
-            data.suggestions.forEach(suggestion => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${suggestion.artist}</td>
-                    <td>${suggestion.song}</td>
-                    <td>${suggestion.year}</td>
-                    <td>${suggestion.genre}</td>
-                    <td>${suggestion.duration}</td>
-                `;
-                suggestionsTable.appendChild(row);
-            });
-        });
-}
-
+            fetch(`/get_suggestions?artist=${encodeURIComponent(artist)}&songName=${encodeURIComponent(songName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const suggestionsTable = document.querySelector('#suggestions');
+                    suggestionsTable.innerHTML = '';
+                    data.suggestions.forEach(suggestion => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${suggestion.artist}</td>
+                            <td>${suggestion.song}</td>
+                            <td>${suggestion.year}</td>
+                            <td>${suggestion.genre}</td>
+                            <td>${suggestion.duration}</td>
+                        `;
+                        suggestionsTable.appendChild(row);
+                    });
+                });
+        }
     </script>
     <style>
         .suggestions_table {
@@ -106,8 +105,9 @@
     <section class="search">
         <div class="columns">
             <div class="column is-one-third is-offset-one-third">
-                <!--htmx below-->
-                <input type="text" class="input" placeholder="Search" name="q" hx-get="/search" hx-trigger="keyup changed delay:500ms" hx-target="#results" onkeyup="console.log('Keyup event triggered')">
+                <input type="text" class="input" placeholder="Search" name="q" 
+                       hx-get="/search" hx-trigger="keyup changed delay:500ms" hx-target="#results" 
+                       onkeyup="console.log('Keyup event triggered')">
                 <button class="button" id="add-button">Add</button>
                 <button class="button" id="search-button">Search</button>
             </div>
@@ -125,10 +125,12 @@
                     </tr>
                 </thead>
                 <tbody id="results">
-                    <!-- Results will be loaded here dynamically via htmx-->
+                    <!-- Results will be loaded here dynamically via HTMX -->
                 </tbody>
             </table>
         </div>
+    </section>
+    
 
         <!-- New table for suggestions -->
         <div class="spacer"></div>

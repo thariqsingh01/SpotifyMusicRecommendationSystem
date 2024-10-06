@@ -1,0 +1,26 @@
+.recommendations {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px; /* Space between recommendations */
+}
+
+.recommendation {
+    width: 150px; /* Set width for each recommendation */
+    text-align: center; /* Center align text */
+}
+
+.album-cover {
+    width: 100%; /* Make cover image responsive */
+    height: auto; /* Maintain aspect ratio */
+    border-radius: 8px; /* Optional: round corners */
+}
+
+.song-info h3 {
+    font-size: 1.2em; /* Font size for track name */
+    margin: 5px 0; /* Space above and below track name */
+}
+
+.song-info p {
+    font-size: 0.9em; /* Font size for artist name */
+    color: #666; /* Optional: gray color for artist name */
+}
