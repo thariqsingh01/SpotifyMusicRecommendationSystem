@@ -33,20 +33,20 @@
 
                     const tableBody = document.querySelector('#choices');
                     const newRow = document.createElement('tr');
-                    
+
                     newRow.innerHTML = `
                         <td>${songName}</td>
                         <td>${artist}</td>
                         <td><img src="../static/images/bin.png" class="bin-icon" onclick="removeRow(this)"></td>
                     `;
-                    
+
                     tableBody.appendChild(newRow);
 
                     // Remove selection after adding to choices
                     selectedRow.classList.remove('selected');
                     selectedRow = null;
 
-                    // Fetch suggestions based on added song (you need to implement this logic)
+                    // Fetch suggestions based on added song
                     fetchSuggestions(artist, songName);
                 }
             });
@@ -109,12 +109,11 @@
         <div class="columns">
             <div class="column is-one-third is-offset-one-third">
                 <input type="text" class="input" placeholder="Search" name="q" hx-get="/search" hx-trigger="keyup changed delay:500ms" hx-target="#results"   
-                  hx-indicator="#search-loading" onkeyup="console.log('Keyup event triggered')">
+                    hx-indicator="#search-loading" onkeyup="console.log('Keyup event triggered')" hx-post="/recommendations">
                 <button class="button" id="add-button">Add</button>
-                <button class="button" id="search-button">Search</button>
             </div>
         </div>
-    
+
         <div class="search_table-container">
             <table class="search_table">
                 <thead>
@@ -127,59 +126,42 @@
                     </tr>
                 </thead>
                 <tbody id="results">
-                    <!-- Results will be loaded here dynamically via HTMX -->
-                </tbody>
+                    </tbody>
             </table>
         </div>
     </section>
-    
-    
 
-        <!-- New table for suggestions -->
-        <div class="spacer"></div>
-        
-        <h2>Suggestions</h2>
-        <div class="suggestions_table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Artist</th>
-                        <th>Song Name</th>
-                        <th>Year</th>
-                        <th>Genre</th>
-                        <th>Duration</th>
-                    </tr>
-                </thead>
-                <tbody id="suggestions">
-                    {% for suggestion in suggestions %}
-                    <tr>
-                        <td>{{ suggestion.artist_name }}</td>
-                        <td>{{ suggestion.track_name }}</td>
-                        <td>{{ suggestion.year }}</td>
-                        <td>{{ suggestion.genre }}</td>
-                        <td>{{ suggestion.duration }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- New table for user-added choices -->
-        <div class="spacer"></div> 
-        
-        <h2>Your Choices</h2>
-        <table class="choices_table" style="align-items: center;">
+    <div class="spacer"></div>
+    <h2>Suggestions</h2>
+    <div class="suggestions_table">
+        <table>
             <thead>
                 <tr>
-                    <th>Song Name</th>
                     <th>Artist</th>
-                    <th>Remove</th>
+                    <th>Song Name</th>
+                    <th>Year</th>
+                    <th>Genre</th>
+                    <th>Duration</th>
                 </tr>
             </thead>
-            <tbody id="choices">
-                <!-- User-added choices will be loaded here -->
-            </tbody>
+            <tbody id="suggestions">
+                </tbody>
         </table>
-    </section>
+    </div>
+
+    <div class="spacer"></div> 
+    <h2>Your Choices</h2>
+    <table class="choices_table" style="align-items: center;">
+        <thead>
+            <tr>
+                <th>Song Name</th>
+                <th>Artist</th>
+                <th>Remove</th>
+            </tr>
+        </thead>
+        <tbody id="choices">
+            </tbody>
+    </table>
+</section>
 </body>
 </html>

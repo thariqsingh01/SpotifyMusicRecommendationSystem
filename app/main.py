@@ -4,7 +4,7 @@ from app import db
 from .clustering.kmeans import perform_kmeans_clustering, generate_kmeans_graph
 from .clustering.dbscan import perform_dbscan_clustering, generate_dbscan_graph
 from .clustering.agglomerative import perform_agglomerative_clustering, generate_agglomerative_graph
-from .clustering.results import get_user_choices,generate_recommendations
+from .clustering.results import get_user_choices, generate_recommendations
 from .clustering.comparison import generate_cnn_graph  # Import CNN graph generation
 import pandas as pd
 import logging
@@ -32,8 +32,8 @@ bp = Blueprint('main', __name__)
 def search():
     query = request.args.get('q')
     logger.info(f'Full request URL: {request.url}')  # Log the full request URL
-    logger.info(f'Search query received: {query}')  # Log the search query
-    
+    logger.info(f'Search query received: {query}')
+
     results = []
     if query:
         results = SpotifyData.query.filter(
@@ -43,33 +43,45 @@ def search():
             (SpotifyData.genre.ilike(f"%{query}%"))
         ).order_by(SpotifyData.popularity.desc()).limit(20).all()
         logger.info(f'Number of results found: {len(results)}')  # Log number of results
-    
+
     if not results:
         logger.info('No results matched the query.')
-    
+
     # Render only the table rows for the HTMX request
     return render_template('search.html', results=results)
 
-@bp.route('/recommendations', methods=['GET'])
+@bp.route('/recommendations', methods=['POST'])
 def recommendations():
-    user_id = request.args.get('user_id')  # Assume you're getting user ID from request
-    user_choices = get_user_choices(user_id)  # Retrieve user choices
-    recommendations = generate_recommendations(user_choices)  # Generate recommendations
+    user_choices = get_user_choices(request.form)
 
-    return render_template('results.html', recommendations=recommendations)
+    # Perform clustering for all algorithms
+    kmeans_cluster_labels = perform_kmeans_clustering(user_choices)
+    dbscan_cluster_labels = perform_dbscan_clustering(user_choices)
+    agglomerative_cluster_labels = perform_agglomerative_clustering(user_choices)
+
+    # Generate recommendations for each algorithm
+    kmeans_recommendations = generate_recommendations(user_choices, kmeans_cluster_labels)
+    dbscan_recommendations = generate_recommendations(user_choices, dbscan_cluster_labels)
+    agglomerative_recommendations = generate_recommendations(user_choices, agglomerative_cluster_labels)
+
+    return render_template('results.html',
+                           kmeans_recommendations=kmeans_recommendations,
+                           dbscan_recommendations=dbscan_recommendations,
+                           agglomerative_recommendations=agglomerative_recommendations)
 
 
 @bp.route('/suggestions', methods=['GET'])
 def suggestions():
     track_id = request.args.get('track_id')
     logger.info(f'Suggestions request for track_id: {track_id}')  # Log the request
+
     if not track_id:
         logger.error('Track ID is required for suggestions.')
         return {'error': 'Track ID is required.'}, 400
 
-    # Find the KMeans cluster for the selected track
+    # Find the KMeans cluster for the selected track (modify for chosen algorithm)
     selected_track = SpotifyData.query.filter_by(track_id=track_id).first()
-    if not selected_track or selected_track.kmeans is None:
+    if not selected_track or not selected_track.kmeans:  # Adjust for chosen algorithm
         logger.error('Track not found or not clustered.')
         return {'error': 'Track not found or not clustered.'}, 404
 
@@ -107,9 +119,9 @@ def comparison():
 
         # Single query to retrieve cluster groups and their counts for KMeans, DBSCAN, and Agglomerative
         cluster_query = """
-            SELECT 
-                kmeans AS cluster_group, 
-                COUNT(*) AS count, 
+            SELECT
+                kmeans AS cluster_group,
+                COUNT(*) AS count,
                 'KMeans' AS algorithm
             FROM Spotify
             WHERE kmeans IS NOT NULL
@@ -117,9 +129,9 @@ def comparison():
 
             UNION ALL
 
-            SELECT 
-                dbscan AS cluster_group, 
-                COUNT(*) AS count, 
+            SELECT
+                dbscan AS cluster_group,
+                COUNT(*) AS count,
                 'DBSCAN' AS algorithm
             FROM Spotify
             WHERE dbscan IS NOT NULL
@@ -127,9 +139,9 @@ def comparison():
 
             UNION ALL
 
-            SELECT 
-                agglomerative AS cluster_group, 
-                COUNT(*) AS count, 
+            SELECT
+                agglomerative AS cluster_group,
+                COUNT(*) AS count,
                 'Agglomerative' AS algorithm
             FROM Spotify
             WHERE agglomerative IS NOT NULL

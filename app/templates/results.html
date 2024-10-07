@@ -3,25 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/results.css') }}">
-    <title>Results</title>
+    <title>Recommendations</title>
+    <link rel="stylesheet" href="../static/css/app.css">
 </head>
 <body>
-    <h1>Recommended Songs</h1>
-    
-    {% for algorithm, songs in recommendations.items() %}
-    <h2>{{ algorithm }} Recommendations</h2>
-    <div class="recommendations">
-        {% for song in songs %}
-        <div class="recommendation">
-            <img src="{{ song.album_cover }}" alt="Album Cover" class="album-cover">
-            <div class="song-info">
-                <h3>{{ song.name }}</h3>
-                <p>{{ song.artist }}</p>
+    <div>
+        <ul class="navbar">
+            <div id="logo-container">
+                <li id="logo"><img src="../static/images/Spotify_Icon_RGB_Green.png" alt="Spotify Logo"></li>
+                <li id="logotext"><h4>Recommendify</h4></li>
             </div>
-        </div>
-        {% endfor %}
+            <div class="nav-links-container">
+                <li class="nav-links"><a href="{{ url_for('main.comparison') }}" class="btn btn-secondary">Compare Clustering Results</a></li>
+                <li class="nav-links"><a href="#results">Search</a></li>
+                <li class="nav-links"><a href="#suggestions">Suggestions</a></li>
+                <li class="nav-links"><a href="#choices">Your Choices</a></li>
+            </div>
+        </ul>
     </div>
-    {% endfor %}
+
+    <h2>Recommendations</h2>
+    <div class="recommendations">
+        <h3>K-Means Recommendations</h3>
+        {% if kmeans_recommendations %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Song Cover</th>
+                        <th>Song Name</th>
+                        <th>Artist Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for recommendation in kmeans_recommendations %}
+                    <tr>
+                        <td><img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.song_name }}" width="50" height="50"></td>
+                        <td>{{ recommendation.song_name }}</td>
+                        <td>{{ recommendation.artist_name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No K-Means recommendations available.</p>
+        {% endif %}
+
+        <h3>DBSCAN Recommendations</h3>
+        {% if dbscan_recommendations %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Song Cover</th>
+                        <th>Song Name</th>
+                        <th>Artist Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for recommendation in dbscan_recommendations %}
+                    <tr>
+                        <td><img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.song_name }}" width="50" height="50"></td>
+                        <td>{{ recommendation.song_name }}</td>
+                        <td>{{ recommendation.artist_name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No DBSCAN recommendations available.</p>
+        {% endif %}
+
+        <h3>Agglomerative Recommendations</h3>
+        {% if agglomerative_recommendations %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Song Cover</th>
+                        <th>Song Name</th>
+                        <th>Artist Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for recommendation in agglomerative_recommendations %}
+                    <tr>
+                        <td><img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.song_name }}" width="50" height="50"></td>
+                        <td>{{ recommendation.song_name }}</td>
+                        <td>{{ recommendation.artist_name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No Agglomerative recommendations available.</p>
+        {% endif %}
+    </div>
 </body>
 </html>

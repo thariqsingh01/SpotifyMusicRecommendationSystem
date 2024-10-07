@@ -1,26 +1,26 @@
+/* Recommendations section */
 .recommendations {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px; /* Space between recommendations */
+    margin-top: 20px;
+    padding: 20px;
 }
 
-.recommendation {
-    width: 150px; /* Set width for each recommendation */
-    text-align: center; /* Center align text */
+.recommendations h3 {
+    text-align: center;
+    margin-bottom: 10px;
 }
 
-.album-cover {
-    width: 100%; /* Make cover image responsive */
-    height: auto; /* Maintain aspect ratio */
-    border-radius: 8px; /* Optional: round corners */
+.recommendations ul {
+    list-style-type: none;
+    padding: 0;
 }
 
-.song-info h3 {
-    font-size: 1.2em; /* Font size for track name */
-    margin: 5px 0; /* Space above and below track name */
+.recommendations li {
+    margin-bottom: 10px;
 }
 
-.song-info p {
-    font-size: 0.9em; /* Font size for artist name */
-    color: #666; /* Optional: gray color for artist name */
+.recommendations img {
+    width: 50px;
+    height: 50px;
+    border-radius: 5px;
+    margin-right: 10px;
 }
