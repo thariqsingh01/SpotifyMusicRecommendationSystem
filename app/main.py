@@ -4,6 +4,7 @@ from app import db
 from .clustering.kmeans import perform_kmeans_clustering, generate_kmeans_graph
 from .clustering.dbscan import perform_dbscan_clustering, generate_dbscan_graph
 from .clustering.agglomerative import perform_agglomerative_clustering, generate_agglomerative_graph
+from .clustering.results import get_user_choices,generate_recommendations
 from .clustering.comparison import generate_cnn_graph  # Import CNN graph generation
 import pandas as pd
 import logging
@@ -49,33 +50,14 @@ def search():
     # Render only the table rows for the HTMX request
     return render_template('search.html', results=results)
 
-def get_recommendations(user_choices):
-    # Fetch recommendations based on user choices from the database
-    recommendations = {'KMeans': [], 'DBSCAN': [], 'Agglomerative': []}
-    
-    for choice in user_choices:
-        selected_song = SpotifyData.query.filter_by(track_id=choice).first()
-        if selected_song:
-            for algorithm in ['kmeans', 'dbscan', 'agglomerative']:
-                cluster = getattr(selected_song, algorithm)
-                if cluster is not None:
-                    similar_songs = SpotifyData.query.filter(getattr(SpotifyData, algorithm) == cluster).limit(5).all()
-                    for song in similar_songs:
-                        # Fetch album cover from Spotify
-                        track_info = sp.track(song.track_id)  # Assuming track_id is Spotify's track ID
-                        album_cover = track_info['album']['images'][0]['url'] if track_info['album']['images'] else None
-                        recommendations[algorithm.capitalize()].append({
-                            'track_id': song.track_id,
-                            'artist_name': song.artist_name,
-                            'track_name': song.track_name,
-                            'year': song.year,
-                            'genre': song.genre,
-                            'duration': song.duration_in_minutes_seconds(),
-                            'album_cover': album_cover  # Add album cover URL
-                        })
-        else:
-            logger.warning(f'Selected song not found for track_id: {choice}')
-    return recommendations
+@bp.route('/recommendations', methods=['GET'])
+def recommendations():
+    user_id = request.args.get('user_id')  # Assume you're getting user ID from request
+    user_choices = get_user_choices(user_id)  # Retrieve user choices
+    recommendations = generate_recommendations(user_choices)  # Generate recommendations
+
+    return render_template('results.html', recommendations=recommendations)
+
 
 @bp.route('/suggestions', methods=['GET'])
 def suggestions():
