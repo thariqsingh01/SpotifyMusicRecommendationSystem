@@ -11,14 +11,9 @@ from flask_caching import Cache
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
-from flask_debugtoolbar import DebugToolbarExtension
 
 app = Flask(__name__)
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
-
-# After initializing your Flask app
-app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
-toolbar = DebugToolbarExtension(app)
 
 # Set up Spotipy with your Spotify API credentials
 client_id = os.getenv('SPOTIFY_CLIENT_ID', 'default_client_id')
@@ -32,10 +27,8 @@ logger = logging.getLogger(__name__)
 
 bp = Blueprint('main', __name__)
 
-@app.route('/search', methods=['GET'])
+@bp.route('/search', methods=['GET'])
 def search():
-    import ipdb; ipdb.set_trace()
-    print("Search route triggered!")
     query = request.args.get('q')
     logger.info(f'Full request URL: {request.url}')  # Log the full request URL
     logger.info(f'Search query received: {query}')  # Log the search query
@@ -54,7 +47,7 @@ def search():
         logger.info('No results matched the query.')
     
     # Render only the table rows for the HTMX request
-    return render_template('partials/results.html', results=results)
+    return render_template('search.html', results=results)
 
 def get_recommendations(user_choices):
     # Fetch recommendations based on user choices from the database
