@@ -13,7 +13,7 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_kmeans_clustering(n_clusters=5, batch_size=10000):
+def perform_kmeans_clustering(engine, n_clusters=100, batch_size=10000):
     try:
         # Check if KMeans clustering has already been performed
         result = db.session.query(SpotifyData).filter(SpotifyData.kmeans.isnot(None)).count()
@@ -23,9 +23,13 @@ def perform_kmeans_clustering(n_clusters=5, batch_size=10000):
             return
 
         # Retrieve data from Spotify table using Pandas
-        df = pd.read_sql(db.session.query(SpotifyData.track_id, SpotifyData.danceability, 
-                                           SpotifyData.energy, SpotifyData.tempo, 
-                                           SpotifyData.valence).statement, db.session.bind)
+        #df = pd.read_sql(db.session.query(SpotifyData.track_id, SpotifyData.danceability, 
+        #                                   SpotifyData.energy, SpotifyData.tempo, 
+        #                                   SpotifyData.valence).statement, db.session.engine)
+        df = pd.read_sql(
+            "SELECT track_id, danceability, energy, tempo, valence FROM Spotify",
+            engine  # Use the passed engine here
+        )
 
         if df.empty:
             logger.warning("No data retrieved from Spotify table.")
@@ -45,7 +49,7 @@ def perform_kmeans_clustering(n_clusters=5, batch_size=10000):
             batch = df.iloc[start:end]
 
             # Perform KMeans clustering on the batch
-            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_jobs=-1)
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42)
             labels = kmeans.fit_predict(batch[['danceability', 'energy', 'tempo', 'valence']])
             batch['kmeans'] = labels  # Change here to use 'kmeans'
 

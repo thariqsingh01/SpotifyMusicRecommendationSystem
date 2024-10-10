@@ -4,7 +4,6 @@ from app import db
 from .clustering.kmeans import perform_kmeans_clustering, generate_kmeans_graph
 from .clustering.dbscan import perform_dbscan_clustering, generate_dbscan_graph
 from .clustering.agglomerative import perform_agglomerative_clustering, generate_agglomerative_graph
-from .clustering.results import get_user_choices, generate_recommendations
 from .clustering.comparison import generate_cnn_graph  # Import CNN graph generation
 import pandas as pd
 import logging
@@ -12,6 +11,7 @@ from flask_caching import Cache
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
+from sklearn.metrics.pairwise import cosine_similarity
 
 app = Flask(__name__)
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
@@ -28,11 +28,82 @@ logger = logging.getLogger(__name__)
 
 bp = Blueprint('main', __name__)
 
+def get_user_choices(request_data):
+    """
+    Extracts user-selected songs from the submitted JSON data.
+    Args:    request_data (dict): A list of dictionaries containing song data submitted by the user.
+    Returns: list: A list of SpotifyData objects representing user-selected songs.
+    """
+    user_choices = []
+    for item in request_data:
+        if item.get('track_name') and item.get('artist_name'):  # Ensure both song and artist are present
+            song = SpotifyData.query.filter_by(track_name=item['track_name'], artist_name=item['artist_name']).first()
+            if song:
+                user_choices.append(song)
+                logger.info(f'This is the current song: {song}')
+    return user_choices
+
+def calculate_similarity(user_features, song_features):
+    """
+    Calculates the cosine similarity between the user's selected song features and a given song's features.
+    Args:  user_features (list): A list of features from the user's selected song (e.g., danceability, energy).
+           song_features (list): A list of features from a Spotify song.
+    Returns:float: The cosine similarity score between the user's song and the given song.
+    """
+    similarity = cosine_similarity([user_features], [song_features])[0][0]
+    return similarity
+
+def generate_recommendations(user_song, cluster_label_field):
+    """
+    Generates recommendations for the user based on their selected song and assigned cluster label.
+    Args:
+        user_song (SpotifyData object): The song chosen by the user.
+        cluster_label_field (str): The name of the cluster label field (e.g., 'kmeans', 'dbscan', 'agglomerative').
+    
+    Returns:
+        list: A list of recommended songs based on similarity and cluster membership.
+    """
+    # Query for songs in the same cluster as the user's song
+    similar_songs = SpotifyData.query.filter(getattr(SpotifyData, cluster_label_field) == getattr(user_song, cluster_label_field)).all()
+
+    # Extract relevant features from the user's selected song
+    user_features = [user_song.danceability, user_song.energy, user_song.tempo, user_song.valence]
+
+    recommendations = []
+    for song in similar_songs:
+        # Extract the features of each song in the same cluster
+        song_features = [song.danceability, song.energy, song.tempo, song.valence]
+        
+        # Calculate similarity score between the user's song and the current song
+        similarity_score = calculate_similarity(user_features, song_features)
+        
+        # Append the song and its similarity score to the recommendations list
+        recommendations.append((song, similarity_score))
+
+    # Sort recommendations by similarity score in descending order
+    recommendations.sort(key=lambda x: x[1], reverse=True)
+
+    # Get the top 5 recommendations
+    top_recommendations = [
+        {
+            'track_id': song.track_id,
+            'artist_name': song.artist_name,
+            'track_name': song.track_name,
+            'year': song.year,
+            'genre': song.genre,
+            'cover_url': song.cover_url 
+        }
+        for song, _ in recommendations[:5]
+    ]
+
+    return top_recommendations
+
+
+
+
 @bp.route('/search', methods=['GET'])
 def search():
     query = request.args.get('q')
-    logger.info(f'Full request URL: {request.url}')  # Log the full request URL
-    logger.info(f'Search query received: {query}')
 
     results = []
     if query:
@@ -52,22 +123,58 @@ def search():
 
 @bp.route('/recommendations', methods=['POST'])
 def recommendations():
-    user_choices = get_user_choices(request.form)
+    try:
+        logger.info(f'request.json: {request.json}')
+        user_choices = get_user_choices(request.json)
 
-    # Perform clustering for all algorithms
-    kmeans_cluster_labels = perform_kmeans_clustering(user_choices)
-    dbscan_cluster_labels = perform_dbscan_clustering(user_choices)
-    agglomerative_cluster_labels = perform_agglomerative_clustering(user_choices)
+        if not user_choices:
+            return jsonify({"message": "No choices provided"}), 400
 
-    # Generate recommendations for each algorithm
-    kmeans_recommendations = generate_recommendations(user_choices, kmeans_cluster_labels)
-    dbscan_recommendations = generate_recommendations(user_choices, dbscan_cluster_labels)
-    agglomerative_recommendations = generate_recommendations(user_choices, agglomerative_cluster_labels)
+        selected_song = user_choices[0]
+        selected_song_name = selected_song.track_name
+        selected_artist = selected_song.artist_name
 
-    return render_template('results.html',
-                           kmeans_recommendations=kmeans_recommendations,
-                           dbscan_recommendations=dbscan_recommendations,
-                           agglomerative_recommendations=agglomerative_recommendations)
+        logger.info(f'User choices: {user_choices}')
+        logger.info(f'Selected song details: Track ID: {selected_song.track_id}, Track Name: {selected_song.track_name}, Artist: {selected_song.artist_name}')
+
+
+        user_song = selected_song
+
+        if not user_song:
+            return jsonify({"message": "Song not found"}), 404
+
+        # Log the cluster labels for debugging
+        logger.info(f'Track ID: {user_song.track_id}, Track Name: {user_song.track_name}, Artist: {user_song.artist_name}')
+        logger.info(f'KMeans label: {user_song.kmeans}, DBSCAN label: {user_song.dbscan}, Agglomerative label: {user_song.agglomerative}')
+
+        # Retrieve cluster labels for the selected song
+        user_cluster_label = user_song.kmeans  # KMeans label
+        dbscan_cluster_label = user_song.dbscan  # DBSCAN label
+        agglomerative_cluster_label = user_song.agglomerative  # Agglomerative label
+
+        # Validate the cluster labels
+        if user_cluster_label is None or dbscan_cluster_label is None or agglomerative_cluster_label is None:
+            return jsonify({"message": "Cluster labels not found"}), 404
+
+        # Generate recommendations for each clustering algorithm
+        kmeans_recommendations = generate_recommendations(user_song, 'kmeans')
+        dbscan_recommendations = generate_recommendations(user_song, 'dbscan')
+        agglomerative_recommendations = generate_recommendations(user_song, 'agglomerative')
+
+        # Check if any recommendations are returned
+        if not kmeans_recommendations and not dbscan_recommendations and not agglomerative_recommendations:
+            logger.warning("No recommendations found for any of the clustering methods")
+            return render_template('results.html', 
+                                   message="No recommendations found for the selected song.")
+
+        return render_template('results.html',
+                               kmeans_recommendations=kmeans_recommendations,
+                               dbscan_recommendations=dbscan_recommendations,
+                               agglomerative_recommendations=agglomerative_recommendations)
+
+    except Exception as e:
+        logger.error(f'Error in recommendations: {e}', exc_info=True)
+        return jsonify({"message": "An error occurred"}), 500
 
 
 @bp.route('/suggestions', methods=['GET'])
@@ -184,6 +291,6 @@ def comparison():
 app.register_blueprint(bp)
 
 def initialize_clustering(uri, engine):
-    perform_kmeans_clustering()
-    perform_dbscan_clustering()
-    perform_agglomerative_clustering()
+    perform_kmeans_clustering(engine)
+    perform_dbscan_clustering(engine)
+    perform_agglomerative_clustering(engine)

@@ -2,6 +2,7 @@
 
 from sklearn.cluster import DBSCAN
 import pandas as pd
+import numpy as np
 from app import db
 from app.models import SpotifyData
 import logging
@@ -13,19 +14,12 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_dbscan_clustering(eps=0.05, min_samples=1000, batch_size=10000):
+def perform_dbscan_clustering(engine, eps=1.5, min_samples=5, batch_size=100000):
     try:
-        # Check if DBSCAN clustering has already been performed
-        result = db.session.query(SpotifyData).filter(SpotifyData.dbscan.isnot(None)).count()
-
-        if result > 0:
-            logger.info(f"DBSCAN clustering already performed on {result} records. Skipping clustering.")
-            return
-
-        # Retrieve data from Spotify table
-        df = pd.read_sql(db.session.query(SpotifyData.track_id, SpotifyData.danceability, 
-                                           SpotifyData.energy, SpotifyData.tempo, 
-                                           SpotifyData.valence).statement, db.session.bind)
+        df = pd.read_sql(
+            "SELECT track_id, danceability, energy, tempo, valence FROM Spotify",
+            engine
+        )
 
         if df.empty:
             logger.warning("No data retrieved from Spotify table.")
@@ -39,19 +33,21 @@ def perform_dbscan_clustering(eps=0.05, min_samples=1000, batch_size=10000):
         logger.info(f"Data scaled. Sample: {df[['danceability', 'energy', 'tempo', 'valence']].head()}")
 
         total_rows = len(df)
-        # Process data in batches
         for start in range(0, total_rows, batch_size):
             end = min(start + batch_size, total_rows)
-            batch = df.iloc[start:end]
+            batch = df.iloc[start:end].copy()
 
             # Perform DBSCAN clustering on the batch
             dbscan = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1)
             labels = dbscan.fit_predict(batch[['danceability', 'energy', 'tempo', 'valence']])
-            batch['dbscan'] = labels
+            batch.loc[:, 'dbscan'] = labels
 
-            # Log the number of noise points and core points
+            # Log cluster distribution
+            unique_labels, counts = np.unique(labels, return_counts=True)
+            logger.info(f"DBSCAN cluster distribution: {dict(zip(unique_labels, counts))}")
+            
+            # Log the number of noise points
             logger.info(f"Number of noise points: {sum(labels == -1)}")
-            logger.info(f"Number of core points in cluster 0: {sum(labels == 0)}")
 
             # Bulk update using SQLAlchemy
             session = db.session
@@ -78,6 +74,7 @@ def perform_dbscan_clustering(eps=0.05, min_samples=1000, batch_size=10000):
 
     finally:
         logger.info("Completed DBSCAN Clustering.")
+
 
 def generate_dbscan_graph(df):
     # Log the initial state of the DataFrame for debugging

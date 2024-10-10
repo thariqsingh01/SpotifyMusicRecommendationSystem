@@ -25,8 +25,8 @@
             document.querySelector('#add-button').addEventListener('click', function() {
                 if (selectedRow) {
                     const cells = selectedRow.getElementsByTagName('td');
-                    const artist = cells[0].textContent;
-                    const songName = cells[1].textContent;
+                    const artist_name = cells[0].textContent;
+                    const track_name = cells[1].textContent;
                     const year = cells[2].textContent;
                     const genre = cells[3].textContent;
                     const duration = cells[4].textContent;
@@ -35,12 +35,18 @@
                     const newRow = document.createElement('tr');
 
                     newRow.innerHTML = `
-                        <td>${songName}</td>
-                        <td>${artist}</td>
+                        <td>${track_name}</td>
+                        <td>${artist_name}</td>
                         <td><img src="../static/images/bin.png" class="bin-icon" onclick="removeRow(this)"></td>
                     `;
 
                     tableBody.appendChild(newRow);
+
+                    // Select the newly added image and set its size
+                    const newImg = newRow.querySelector('.bin-icon');
+                    newImg.style.width = '20px';  // Adjust size
+                    newImg.style.height = 'auto'; // Maintain aspect ratio
+                    newImg.style.verticalAlign = 'middle'; // Align like a line
 
                     // Remove selection after adding to choices
                     selectedRow.classList.remove('selected');
@@ -50,11 +56,49 @@
                     fetchSuggestions(artist, songName);
                 }
             });
+
         });
 
         function removeRow(icon) {
             icon.parentElement.parentElement.remove();
         }
+
+        function search() {
+            const userChoices = [];
+
+            // Extract song and artist from the user choices table
+            const rows = document.querySelectorAll('#choices tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const track_name = cells[0].textContent;
+                const artist_name = cells[1].textContent;
+
+                userChoices.push({ track_name, artist_name });
+            });
+
+            // Submit choices to Flask endpoint
+            fetch('/recommendations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userChoices),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Recommendations received:', data);
+        
+                // Handle data or redirect as needed
+                if (data.message) {
+                    alert(data.message); // Show alert for error messages
+                } else {
+                    // Assuming you want to redirect to results.html after receiving recommendations
+                    window.location.href = '/results'; // Change this to the actual route for results
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
 
         function fetchSuggestions(artist, songName) {
             fetch(`/get_suggestions?artist=${encodeURIComponent(artist)}&songName=${encodeURIComponent(songName)}`)
@@ -111,6 +155,7 @@
                 <input type="text" class="input" placeholder="Search" name="q" hx-get="/search" hx-trigger="keyup changed delay:500ms" hx-target="#results"   
                     hx-indicator="#search-loading" onkeyup="console.log('Keyup event triggered')" hx-post="/recommendations">
                 <button class="button" id="add-button">Add</button>
+                <button class="button" id="search-button" onclick="search()">Search</button>
             </div>
         </div>
 
@@ -163,5 +208,6 @@
             </tbody>
     </table>
 </section>
+<br><br><br><br><br>
 </body>
 </html>
