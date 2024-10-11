@@ -14,10 +14,17 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_dbscan_clustering(engine, eps=1.5, min_samples=5, batch_size=100000):
+def perform_dbscan_clustering(engine, eps=1.5, min_samples=5, batch_size=50000):
     try:
+       # Check if dbscan clustering has already been performed
+        result = db.session.query(SpotifyData).filter(SpotifyData.dbscan.isnot(None)).count()
+
+        if result > 0:
+            logger.info(f"dbscan clustering already performed on {result} records. Skipping clustering.")
+            return
+
         df = pd.read_sql(
-            "SELECT track_id, danceability, energy, tempo, valence FROM Spotify",
+            "SELECT track_id, danceability, energy, acousticness, valence FROM Spotify",
             engine
         )
 
@@ -29,8 +36,8 @@ def perform_dbscan_clustering(engine, eps=1.5, min_samples=5, batch_size=100000)
 
         # Scale features
         scaler = StandardScaler()
-        df[['danceability', 'energy', 'tempo', 'valence']] = scaler.fit_transform(df[['danceability', 'energy', 'tempo', 'valence']])
-        logger.info(f"Data scaled. Sample: {df[['danceability', 'energy', 'tempo', 'valence']].head()}")
+        df[['danceability', 'energy', 'acousticness', 'valence']] = scaler.fit_transform(df[['danceability', 'energy', 'acousticness', 'valence']])
+        logger.info(f"Data scaled. Sample: {df[['danceability', 'energy', 'acousticness', 'valence']].head()}")
 
         total_rows = len(df)
         for start in range(0, total_rows, batch_size):
@@ -39,7 +46,7 @@ def perform_dbscan_clustering(engine, eps=1.5, min_samples=5, batch_size=100000)
 
             # Perform DBSCAN clustering on the batch
             dbscan = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1)
-            labels = dbscan.fit_predict(batch[['danceability', 'energy', 'tempo', 'valence']])
+            labels = dbscan.fit_predict(batch[['danceability', 'energy', 'acousticness', 'valence']])
             batch.loc[:, 'dbscan'] = labels
 
             # Log cluster distribution

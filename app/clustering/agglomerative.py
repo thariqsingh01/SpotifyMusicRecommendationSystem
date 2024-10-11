@@ -12,7 +12,7 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_agglomerative_clustering(engine, n_clusters=100, batch_size=10000):
+def perform_agglomerative_clustering(engine, n_clusters=100, batch_size=50000):
     try:
         # Check if Agglomerative Clustering has already been performed
         result = db.session.query(SpotifyData).filter(SpotifyData.agglomerative.isnot(None)).count()
@@ -26,7 +26,7 @@ def perform_agglomerative_clustering(engine, n_clusters=100, batch_size=10000):
         #                                   SpotifyData.energy, SpotifyData.tempo, 
         #                                   SpotifyData.valence).statement, db.session.engine)
         df = pd.read_sql(
-            "SELECT track_id, danceability, energy, tempo, valence FROM Spotify",
+            "SELECT track_id, danceability, energy, acousticness, valence FROM Spotify",
             engine  # Use the passed engine here
         )
 
@@ -45,7 +45,7 @@ def perform_agglomerative_clustering(engine, n_clusters=100, batch_size=10000):
 
             # Perform Agglomerative clustering on the batch
             agglomerative = AgglomerativeClustering(n_clusters=n_clusters)
-            labels = agglomerative.fit_predict(batch[['danceability', 'energy', 'tempo', 'valence']])
+            labels = agglomerative.fit_predict(batch[['danceability', 'energy', 'acousticness', 'valence']])
             batch['agglomerative'] = labels
 
             # Bulk update using SQLAlchemy

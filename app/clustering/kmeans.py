@@ -13,7 +13,7 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def perform_kmeans_clustering(engine, n_clusters=100, batch_size=10000):
+def perform_kmeans_clustering(engine, n_clusters=100, batch_size=50000):
     try:
         # Check if KMeans clustering has already been performed
         result = db.session.query(SpotifyData).filter(SpotifyData.kmeans.isnot(None)).count()
@@ -27,7 +27,7 @@ def perform_kmeans_clustering(engine, n_clusters=100, batch_size=10000):
         #                                   SpotifyData.energy, SpotifyData.tempo, 
         #                                   SpotifyData.valence).statement, db.session.engine)
         df = pd.read_sql(
-            "SELECT track_id, danceability, energy, tempo, valence FROM Spotify",
+            "SELECT track_id, danceability, energy, acousticness, valence FROM Spotify",
             engine  # Use the passed engine here
         )
 
@@ -40,8 +40,8 @@ def perform_kmeans_clustering(engine, n_clusters=100, batch_size=10000):
         total_rows = len(df)
         # Scale features
         scaler = StandardScaler()
-        df[['danceability', 'energy', 'tempo', 'valence']] = scaler.fit_transform(df[['danceability', 'energy', 'tempo', 'valence']])
-        logger.info(f"Data scaled. Sample: {df[['danceability', 'energy', 'tempo', 'valence']].head()}")
+        df[['danceability', 'energy', 'acousticness', 'valence']] = scaler.fit_transform(df[['danceability', 'energy', 'acousticness', 'valence']])
+        logger.info(f"Data scaled. Sample: {df[['danceability', 'energy', 'acousticness', 'valence']].head()}")
 
         # Process data in batches
         for start in range(0, total_rows, batch_size):
@@ -50,7 +50,7 @@ def perform_kmeans_clustering(engine, n_clusters=100, batch_size=10000):
 
             # Perform KMeans clustering on the batch
             kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-            labels = kmeans.fit_predict(batch[['danceability', 'energy', 'tempo', 'valence']])
+            labels = kmeans.fit_predict(batch[['danceability', 'energy', 'acousticness', 'valence']])
             batch['kmeans'] = labels  # Change here to use 'kmeans'
 
             # Bulk update using SQLAlchemy

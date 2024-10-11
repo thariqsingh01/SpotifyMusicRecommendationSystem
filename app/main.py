@@ -1,3 +1,5 @@
+#main.py
+
 from flask import Flask, Blueprint, render_template, request, current_app, jsonify
 from .models import SpotifyData
 from app import db
@@ -11,16 +13,17 @@ from flask_caching import Cache
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
+from dotenv import load_dotenv
 from sklearn.metrics.pairwise import cosine_similarity
 
 app = Flask(__name__)
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
+load_dotenv()
 
 # Set up Spotipy with your Spotify API credentials
 client_id = os.getenv('SPOTIFY_CLIENT_ID', 'default_client_id')
 client_secret = os.getenv('SPOTIFY_CLIENT_SECRET', 'default_client_secret')
-credentials = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
-sp = spotipy.Spotify(client_credentials_manager=credentials)
+sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -53,32 +56,59 @@ def calculate_similarity(user_features, song_features):
     similarity = cosine_similarity([user_features], [song_features])[0][0]
     return similarity
 
-def generate_recommendations(user_song, cluster_label_field):
+def get_track_cover(sp,track_id):
+    try:
+        track = sp.track(track_id)
+        return track['album']['images'][0]['url'] if track['album']['images'] else None
+    except Exception as e:
+        logging.error(f"Error fetching cover for track_id {track_id}: {str(e)}")
+        return None
+
+# Assuming `user_choices` is the list of user-added songs' track_ids.
+def fetch_covers_for_user_choices(user_choices):
+    covers = []
+    for track_id in user_choices:
+        cover_url = get_track_cover(track_id)
+        if cover_url:
+            covers.append(cover_url)
+    return covers
+
+# Modify the generate_recommendations function to include cover images
+def generate_recommendations(user_song, cluster_label_field, limit=10):
     """
     Generates recommendations for the user based on their selected song and assigned cluster label.
+    
     Args:
         user_song (SpotifyData object): The song chosen by the user.
         cluster_label_field (str): The name of the cluster label field (e.g., 'kmeans', 'dbscan', 'agglomerative').
+        limit (int): The maximum number of songs to consider for recommendations.
     
     Returns:
-        list: A list of recommended songs based on similarity and cluster membership.
+        list: A list of recommended songs with similarity scores and album covers.
     """
-    # Query for songs in the same cluster as the user's song
-    similar_songs = SpotifyData.query.filter(getattr(SpotifyData, cluster_label_field) == getattr(user_song, cluster_label_field)).all()
+    # Query for songs in the same cluster as the user's song, limiting the results
+    similar_songs = SpotifyData.query.filter(
+        getattr(SpotifyData, cluster_label_field) == getattr(user_song, cluster_label_field)
+    ).limit(limit).all()
+    logger.info(f"Number of similar songs found for KMeans label {cluster_label_field}: {len(similar_songs)}")
+
 
     # Extract relevant features from the user's selected song
-    user_features = [user_song.danceability, user_song.energy, user_song.tempo, user_song.valence]
+    user_features = [user_song.danceability, user_song.energy, user_song.acousticness, user_song.valence]
 
     recommendations = []
     for song in similar_songs:
         # Extract the features of each song in the same cluster
-        song_features = [song.danceability, song.energy, song.tempo, song.valence]
+        song_features = [song.danceability, song.energy, song.acousticness, song.valence]
         
         # Calculate similarity score between the user's song and the current song
         similarity_score = calculate_similarity(user_features, song_features)
         
-        # Append the song and its similarity score to the recommendations list
-        recommendations.append((song, similarity_score))
+        # Fetch the cover image using Spotipy
+        cover_url = get_track_cover(sp, song.track_id) 
+
+        # Append the song, its similarity score, and cover URL to the recommendations list
+        recommendations.append((song, similarity_score, cover_url))
 
     # Sort recommendations by similarity score in descending order
     recommendations.sort(key=lambda x: x[1], reverse=True)
@@ -91,9 +121,9 @@ def generate_recommendations(user_song, cluster_label_field):
             'track_name': song.track_name,
             'year': song.year,
             'genre': song.genre,
-            'cover_url': song.cover_url 
+            'cover_url': cover_url  # Add cover_url to the recommendation
         }
-        for song, _ in recommendations[:5]
+        for song, _, cover_url in recommendations[:5]
     ]
 
     return top_recommendations
@@ -157,9 +187,9 @@ def recommendations():
             return jsonify({"message": "Cluster labels not found"}), 404
 
         # Generate recommendations for each clustering algorithm
-        kmeans_recommendations = generate_recommendations(user_song, 'kmeans')
-        dbscan_recommendations = generate_recommendations(user_song, 'dbscan')
-        agglomerative_recommendations = generate_recommendations(user_song, 'agglomerative')
+        kmeans_recommendations = generate_recommendations(user_song, 'kmeans', limit=20)
+        dbscan_recommendations = generate_recommendations(user_song, 'dbscan', limit=20)
+        agglomerative_recommendations = generate_recommendations(user_song, 'agglomerative', limit=20)
 
         # Check if any recommendations are returned
         if not kmeans_recommendations and not dbscan_recommendations and not agglomerative_recommendations:
@@ -196,6 +226,10 @@ def suggestions():
 
     # Fetch other songs in the same cluster
     similar_songs = SpotifyData.query.filter_by(kmeans=cluster).limit(10).all()
+    logger.info(f"Number of similar songs found: {len(similar_songs)}")
+    for song in similar_songs:
+        logger.info(f"Considering song: {song.track_name} by {song.artist_name}")
+
 
     # Prepare suggestions for rendering
     suggestions_list = [

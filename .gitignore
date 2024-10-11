@@ -4,5 +4,3 @@ __pycache__/
 instance/
 .pytest_cache/
 
-client_id = '36fe51fcc4db461a891291c324f7ed9f'
-client_secret = '1fc4d4d9bde7417fb754c878f58355d9'
