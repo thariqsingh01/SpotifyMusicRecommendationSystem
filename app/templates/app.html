@@ -84,21 +84,21 @@
                 },
                 body: JSON.stringify(userChoices),
             })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Recommendations received:', data);
-        
-                // Handle data or redirect as needed
-                if (data.message) {
-                    alert(data.message); // Show alert for error messages
-                } else {
-                    // Assuming you want to redirect to results.html after receiving recommendations
-                    window.location.href = '/results'; // Change this to the actual route for results
+            .then(response => {
+                // Check if the response is successful
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
                 }
+                return response.text(); // Get the response as text
+            })
+            .then(html => {
+                // Replace the current document's body with the new HTML
+                document.open();
+                document.write(html);
+                document.close();
             })
             .catch(error => console.error('Error:', error));
         }
-
 
         function fetchSuggestions(artist, songName) {
             fetch(`/get_suggestions?artist=${encodeURIComponent(artist)}&songName=${encodeURIComponent(songName)}`)

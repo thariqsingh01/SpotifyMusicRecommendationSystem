@@ -31,105 +31,145 @@ logger = logging.getLogger(__name__)
 
 bp = Blueprint('main', __name__)
 
+from sqlalchemy import or_
+
 def get_user_choices(request_data):
     """
     Extracts user-selected songs from the submitted JSON data.
     Args:    request_data (dict): A list of dictionaries containing song data submitted by the user.
     Returns: list: A list of SpotifyData objects representing user-selected songs.
     """
-    user_choices = []
-    for item in request_data:
-        if item.get('track_name') and item.get('artist_name'):  # Ensure both song and artist are present
-            song = SpotifyData.query.filter_by(track_name=item['track_name'], artist_name=item['artist_name']).first()
-            if song:
-                user_choices.append(song)
-                logger.info(f'This is the current song: {song}')
+
+    # Extract track_name and artist_name pairs from request_data
+    track_artist_pairs = [(item['track_name'], item['artist_name']) 
+                          for item in request_data 
+                          if item.get('track_name') and item.get('artist_name')]
+    
+    if not track_artist_pairs:
+        return []
+    
+    # Use 'or_' to filter by multiple conditions (track_name and artist_name)
+    user_choices = SpotifyData.query.filter(
+        or_(
+            *[(SpotifyData.track_name == track_name) & (SpotifyData.artist_name == artist_name) 
+              for track_name, artist_name in track_artist_pairs]
+        )
+    ).all()
+
+    for song in user_choices:
+        logger.info(f'This is the current song: {song}')
+    
     return user_choices
+
 
 def calculate_similarity(user_features, song_features):
     """
     Calculates the cosine similarity between the user's selected song features and a given song's features.
-    Args:  user_features (list): A list of features from the user's selected song (e.g., danceability, energy).
-           song_features (list): A list of features from a Spotify song.
-    Returns:float: The cosine similarity score between the user's song and the given song.
+    Args:    user_features (list): A list of features from the user's selected song (e.g., danceability, energy).
+             song_features (list): A list of features from a Spotify song.
+    Returns: float: The cosine similarity score between the user's song and the given song.
     """
-    similarity = cosine_similarity([user_features], [song_features])[0][0]
-    return similarity
+    return cosine_similarity([user_features], [song_features])[0][0]
 
-def get_track_cover(sp,track_id):
+def get_track_cover(sp, track_id):
+    """
+    Fetches the album cover URL for a given track using the Spotify API.
+    Args:     sp (Spotipy object): The Spotipy client instance.
+              track_id (str): The Spotify track ID.
+    Returns:  str: URL of the album cover image, or None if unavailable.
+    """
     try:
         track = sp.track(track_id)
         return track['album']['images'][0]['url'] if track['album']['images'] else None
     except Exception as e:
-        logging.error(f"Error fetching cover for track_id {track_id}: {str(e)}")
+        logger.error(f"Error fetching cover for track_id {track_id}: {str(e)}")
         return None
 
-# Assuming `user_choices` is the list of user-added songs' track_ids.
 def fetch_covers_for_user_choices(user_choices):
+    """
+    Fetches album cover URLs for the list of user-selected songs.
+    Args:    user_choices (list): A list of SpotifyData objects representing user-selected songs.
+    Returns: list: A list of album cover URLs.
+    """
+    track_ids = [song.track_id for song in user_choices]
+    
+    # Fetch covers for all user songs
     covers = []
-    for track_id in user_choices:
-        cover_url = get_track_cover(track_id)
+    for track_id in track_ids:
+        cover_url = get_track_cover(sp, track_id)
         if cover_url:
             covers.append(cover_url)
+    
     return covers
+
 
 # Modify the generate_recommendations function to include cover images
 def generate_recommendations(user_song, cluster_label_field, limit=10):
     """
     Generates recommendations for the user based on their selected song and assigned cluster label.
-    
     Args:
         user_song (SpotifyData object): The song chosen by the user.
         cluster_label_field (str): The name of the cluster label field (e.g., 'kmeans', 'dbscan', 'agglomerative').
         limit (int): The maximum number of songs to consider for recommendations.
-    
     Returns:
         list: A list of recommended songs with similarity scores and album covers.
     """
+    # Log starting point
+    logger.info(f"Starting recommendation generation for user song: {user_song.track_name} by {user_song.artist_name}, "
+                f"KMeans label: {user_song.kmeans}")
+
     # Query for songs in the same cluster as the user's song, limiting the results
     similar_songs = SpotifyData.query.filter(
         getattr(SpotifyData, cluster_label_field) == getattr(user_song, cluster_label_field)
     ).limit(limit).all()
-    logger.info(f"Number of similar songs found for KMeans label {cluster_label_field}: {len(similar_songs)}")
 
+    # Log the number of similar songs found
+    logger.info(f"Number of similar songs found for {cluster_label_field}: {len(similar_songs)}")
+    logger.info(f"Cluster label used for filtering: {getattr(user_song, cluster_label_field)}")
 
     # Extract relevant features from the user's selected song
     user_features = [user_song.danceability, user_song.energy, user_song.acousticness, user_song.valence]
+    logger.info(f"User features: {user_features}")
 
     recommendations = []
     for song in similar_songs:
+        # Log each song's basic details
+        logger.info(f"Song in cluster: {song.track_name} by {song.artist_name}, Features: "
+                    f"[{song.danceability}, {song.energy}, {song.acousticness}, {song.valence}]")
+
         # Extract the features of each song in the same cluster
         song_features = [song.danceability, song.energy, song.acousticness, song.valence]
-        
+
         # Calculate similarity score between the user's song and the current song
         similarity_score = calculate_similarity(user_features, song_features)
-        
-        # Fetch the cover image using Spotipy
-        cover_url = get_track_cover(sp, song.track_id) 
+        logger.info(f"Calculated similarity score for song {song.track_name}: {similarity_score}")
 
-        # Append the song, its similarity score, and cover URL to the recommendations list
-        recommendations.append((song, similarity_score, cover_url))
+        # Append the song and similarity score to the recommendations list
+        recommendations.append((song, similarity_score))
 
     # Sort recommendations by similarity score in descending order
     recommendations.sort(key=lambda x: x[1], reverse=True)
 
-    # Get the top 5 recommendations
-    top_recommendations = [
-        {
-            'track_id': song.track_id,
-            'artist_name': song.artist_name,
-            'track_name': song.track_name,
-            'year': song.year,
-            'genre': song.genre,
-            'cover_url': cover_url  # Add cover_url to the recommendation
-        }
-        for song, _, cover_url in recommendations[:5]
-    ]
+    # Fetch covers only for the top 5 recommendations
+    top_recommendations = []
+    for song, similarity_score in recommendations[:5]:
+        # Fetch the cover image using Spotipy
+        cover_url = get_track_cover(sp, song.track_id)  # Ensure individual track_id is passed here
+        logger.info(f"Fetching cover image for song {song.track_name}...")
 
+        if cover_url:  # Ensure cover_url is not None before proceeding
+            # Append the song, its similarity score, and cover URL to the top recommendations
+            top_recommendations.append({
+                'track_id': song.track_id,
+                'artist_name': song.artist_name,
+                'track_name': song.track_name,
+                'year': song.year,
+                'genre': song.genre,
+                'cover_url': cover_url  # Add cover_url to the recommendation
+            })
+
+    logger.info(f"Top 5 recommendations: {[rec['track_name'] for rec in top_recommendations]}")
     return top_recommendations
-
-
-
 
 @bp.route('/search', methods=['GET'])
 def search():
@@ -178,12 +218,12 @@ def recommendations():
         logger.info(f'KMeans label: {user_song.kmeans}, DBSCAN label: {user_song.dbscan}, Agglomerative label: {user_song.agglomerative}')
 
         # Retrieve cluster labels for the selected song
-        user_cluster_label = user_song.kmeans  # KMeans label
+        kmeans_cluster_label = user_song.kmeans  # KMeans label
         dbscan_cluster_label = user_song.dbscan  # DBSCAN label
         agglomerative_cluster_label = user_song.agglomerative  # Agglomerative label
 
         # Validate the cluster labels
-        if user_cluster_label is None or dbscan_cluster_label is None or agglomerative_cluster_label is None:
+        if kmeans_cluster_label is None or dbscan_cluster_label is None or agglomerative_cluster_label is None:
             return jsonify({"message": "Cluster labels not found"}), 404
 
         # Generate recommendations for each clustering algorithm

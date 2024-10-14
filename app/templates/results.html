@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recommendations</title>
-    <link rel="stylesheet" href="../static/css/app.css">
+    <link rel="stylesheet" href="../static/css/results.css">
 </head>
 <body>
     <div>
@@ -22,79 +22,58 @@
         </ul>
     </div>
 
-    <h2>Recommendations</h2>
     <div class="recommendations">
         <h3>K-Means Recommendations</h3>
-        {% if kmeans_recommendations %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Song Cover</th>
-                        <th>Song Name</th>
-                        <th>Artist Name</th>
-                    </tr>
-                </thead>
-                <tbody>
+        <div class="recommendation-table">
+            {% if kmeans_recommendations %}
+                <div class="recommendation-row">
                     {% for recommendation in kmeans_recommendations %}
-                    <tr>
-                        <td><img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.song_name }}" width="50" height="50"></td>
-                        <td>{{ recommendation.song_name }}</td>
-                        <td>{{ recommendation.artist_name }}</td>
-                    </tr>
+                        <div class="recommendation-item">
+                            <img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.track_name }}">
+                            <p>{{ recommendation.track_name }}</p>
+                            <p>{{ recommendation.artist_name }}</p>
+                        </div>
                     {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>No K-Means recommendations available.</p>
-        {% endif %}
+                </div>
+            {% else %}
+                <div class="no-recommendations">No K-Means recommendations available.</div>
+            {% endif %}
+        </div>
 
         <h3>DBSCAN Recommendations</h3>
-        {% if dbscan_recommendations %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Song Cover</th>
-                        <th>Song Name</th>
-                        <th>Artist Name</th>
-                    </tr>
-                </thead>
-                <tbody>
+        <div class="recommendation-table">
+            {% if dbscan_recommendations %}
+                <div class="recommendation-row">
                     {% for recommendation in dbscan_recommendations %}
-                    <tr>
-                        <td><img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.song_name }}" width="50" height="50"></td>
-                        <td>{{ recommendation.song_name }}</td>
-                        <td>{{ recommendation.artist_name }}</td>
-                    </tr>
+                        <div class="recommendation-item">
+                            <img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.track_name }}">
+                            <p>{{ recommendation.track_name }}</p>
+                            <p>{{ recommendation.artist_name }}</p>
+                        </div>
                     {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>No DBSCAN recommendations available.</p>
-        {% endif %}
+                </div>
+            {% else %}
+                <div class="no-recommendations">No DBSCAN recommendations available.</div>
+            {% endif %}
+        </div>
 
         <h3>Agglomerative Recommendations</h3>
-        {% if agglomerative_recommendations %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Song Cover</th>
-                        <th>Song Name</th>
-                        <th>Artist Name</th>
-                    </tr>
-                </thead>
-                <tbody>
+        <div class="recommendation-table">
+            {% if agglomerative_recommendations %}
+                <div class="recommendation-row">
                     {% for recommendation in agglomerative_recommendations %}
-                    <tr>
-                        <td><img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.song_name }}" width="50" height="50"></td>
-                        <td>{{ recommendation.song_name }}</td>
-                        <td>{{ recommendation.artist_name }}</td>
-                    </tr>
+                        <div class="recommendation-item">
+                            <img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.track_name }}">
+                            <p>{{ recommendation.track_name }}</p>
+                            <p>{{ recommendation.artist_name }}</p>
+                        </div>
                     {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>No Agglomerative recommendations available.</p>
-        {% endif %}
+                </div>
+            {% else %}
+                <div class="no-recommendations">No Agglomerative recommendations available.</div>
+            {% endif %}
+        </div>
     </div>
 </body>
 </html>
+
