@@ -11,7 +11,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             let selectedRow = null;
-
+    
             // Add click event listener to rows in the search table
             document.querySelector('#results').addEventListener('click', function(event) {
                 if (event.target.tagName === 'TD') {
@@ -22,7 +22,19 @@
                     selectedRow.classList.add('selected');
                 }
             });
-
+    
+            // Add click event listener to the suggestions table
+            document.querySelector('#suggestions-table tbody').addEventListener('click', function(event) {
+                if (event.target.tagName === 'TD') {
+                    if (selectedRow) {
+                        selectedRow.classList.remove('selected');
+                    }
+                    selectedRow = event.target.parentElement;
+                    selectedRow.classList.add('selected');
+                    selectedRow.style.backgroundColor = '#1DB954';
+                }
+            });
+    
             // Add click event listener to the Add button
             document.querySelector('#add-button').addEventListener('click', function() {
                 if (selectedRow) {
@@ -32,52 +44,56 @@
                     const year = cells[2].textContent;
                     const genre = cells[3].textContent;
                     const duration = cells[4].textContent;
-
-                    const tableBody = document.querySelector('#choices');
-                    const newRow = document.createElement('tr');
-
-                    newRow.innerHTML = `
-                        <td>${track_name}</td>
-                        <td>${artist_name}</td>
-                        <td><img src="../static/images/bin.png" class="bin-icon" onclick="removeRow(this)"></td>
-                    `;
-
-                    tableBody.appendChild(newRow);
-
-                    // Select the newly added image and set its size
-                    const newImg = newRow.querySelector('.bin-icon');
-                    newImg.style.width = '20px';  // Adjust size
-                    newImg.style.height = 'auto'; // Maintain aspect ratio
-                    newImg.style.verticalAlign = 'middle'; // Align like a line
-
-                    // Remove selection after adding to choices
-                    selectedRow.classList.remove('selected');
-                    selectedRow = null;
-
+    
+                    addToChoices(track_name, artist_name);
+                    
                     // Fetch suggestions based on the added song
                     fetchSuggestions(track_name, artist_name);
                 }
             });
-
+    
+            function addToChoices(track_name, artist_name) {
+                const tableBody = document.querySelector('#choices');
+                const newRow = document.createElement('tr');
+    
+                newRow.innerHTML = `
+                    <td>${track_name}</td>
+                    <td>${artist_name}</td>
+                    <td><img src="../static/images/bin.png" class="bin-icon" onclick="removeRow(this)"></td>
+                `;
+    
+                tableBody.appendChild(newRow);
+    
+                // Select the newly added image and set its size
+                const newImg = newRow.querySelector('.bin-icon');
+                newImg.style.width = '20px';  // Adjust size
+                newImg.style.height = 'auto'; // Maintain aspect ratio
+                newImg.style.verticalAlign = 'middle'; // Align like a line
+    
+                // Remove selection after adding to choices
+                selectedRow.classList.remove('selected');
+                selectedRow = null;
+            }
+    
         });
-
+    
         function removeRow(icon) {
             icon.parentElement.parentElement.remove();
         }
-
+    
         function search() {
             const userChoices = [];
-
+    
             // Extract song and artist from the user choices table
             const rows = document.querySelectorAll('#choices tr');
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
                 const track_name = cells[0].textContent;
                 const artist_name = cells[1].textContent;
-
+    
                 userChoices.push({ track_name, artist_name });
             });
-
+    
             // Submit choices to Flask endpoint
             fetch('/recommendations', {
                 method: 'POST',
@@ -87,7 +103,6 @@
                 body: JSON.stringify(userChoices),
             })
             .then(response => {
-                // Check if the response is successful
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
@@ -101,7 +116,7 @@
             })
             .catch(error => console.error('Error:', error));
         }
-
+    
         // Function to fetch suggestions when a song is added
         function fetchSuggestions(track_name, artist_name) {
             // Prepare the data to send in the POST request
@@ -109,20 +124,19 @@
                 track_name: track_name,
                 artist_name: artist_name
             };
-
+    
             fetch('/suggestions', {
-                method: 'POST',  // Change the method to POST
+                method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'  // Set the content type to JSON
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(requestData)  // Send the track name and artist name in the request body
+                body: JSON.stringify(requestData)
             })
             .then(response => response.json())
             .then(data => {
-                // Update the suggestions table with the returned suggestions
                 const suggestionsTable = document.getElementById('suggestions-table').getElementsByTagName('tbody')[0];
                 suggestionsTable.innerHTML = '';  // Clear existing rows
-
+    
                 // Populate the table with new suggestions
                 data.suggestions.forEach(suggestion => {
                     const row = document.createElement('tr');
@@ -138,16 +152,8 @@
             })
             .catch(error => console.error('Error fetching suggestions:', error));
         }
-
-
     </script>
-    <style>
-        .suggestions_table {
-            max-height: 150px; /* Adjust the height for your needs */
-            overflow-y: auto;
-            display: block; /* Ensures it behaves like a block element */
-        }
-    </style>
+    
 </head>
 <body>
     <div>
@@ -222,7 +228,13 @@
                 {% endfor %}
             </tbody>
         </table>
-        
+        <style>
+            /* Hover effect for table rows */
+            #suggestions-table tr:hover {
+                background-color: #f1f1f1;  /* Change background color on hover */
+                cursor: pointer;            /* Change cursor to pointer */
+            }
+        </style>
     </div>
 
     <div class="spacer"></div> 

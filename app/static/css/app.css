@@ -168,6 +168,7 @@ table tr:hover {
   color: white;
 }
 
+
 /* Equal column widths for all tables */
 table th:nth-child(1),
 table td:nth-child(1) {
