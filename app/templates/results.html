@@ -30,8 +30,8 @@
                     {% for recommendation in kmeans_recommendations %}
                         <div class="recommendation-item">
                             <img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.track_name }}">
-                            <p>{{ recommendation.track_name }}</p>
-                            <p>{{ recommendation.artist_name }}</p>
+                            <p class="track-name">{{ recommendation.track_name }}</p>
+                            <p class="artist-name">{{ recommendation.artist_name }}</p>
                         </div>
                     {% endfor %}
                 </div>
@@ -47,8 +47,8 @@
                     {% for recommendation in dbscan_recommendations %}
                         <div class="recommendation-item">
                             <img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.track_name }}">
-                            <p>{{ recommendation.track_name }}</p>
-                            <p>{{ recommendation.artist_name }}</p>
+                            <p class="track-name">{{ recommendation.track_name }}</p>
+                            <p class="artist-name">{{ recommendation.artist_name }}</p>
                         </div>
                     {% endfor %}
                 </div>
@@ -64,8 +64,8 @@
                     {% for recommendation in agglomerative_recommendations %}
                         <div class="recommendation-item">
                             <img src="{{ recommendation.cover_url }}" alt="Cover for {{ recommendation.track_name }}">
-                            <p>{{ recommendation.track_name }}</p>
-                            <p>{{ recommendation.artist_name }}</p>
+                            <p class="track-name">{{ recommendation.track_name }}</p>
+                            <p class="artist-name">{{ recommendation.artist_name }}</p>
                         </div>
                     {% endfor %}
                 </div>
@@ -76,4 +76,3 @@
     </div>
 </body>
 </html>
-
