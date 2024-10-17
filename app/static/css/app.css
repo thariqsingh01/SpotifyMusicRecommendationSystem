@@ -125,8 +125,10 @@ body {
 /* Scrollable container for tables */
 .search_table-container,
 .suggestions_table,
+#suggesions-table,
 .choices_table {
   max-height: 300px;
+  min-height: 300px;
   overflow-y: auto;
   width: 90%;
   margin: 0 auto;
@@ -148,6 +150,9 @@ table th, table td {
 table th {
   background-color: #333;
   color: white;
+  position: sticky; /* Make header sticky */
+  top: 0; /* Position it at the top of the scrolling container */
+  z-index: 1; /* Ensure it stays above other content */
 }
 
 table tr:nth-child(even) {

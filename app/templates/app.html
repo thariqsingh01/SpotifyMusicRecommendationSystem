@@ -1,3 +1,5 @@
+<!--app.html-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -52,8 +54,8 @@
                     selectedRow.classList.remove('selected');
                     selectedRow = null;
 
-                    // Fetch suggestions based on added song
-                    fetchSuggestions(artist, songName);
+                    // Fetch suggestions based on the added song
+                    fetchSuggestions(track_name, artist_name);
                 }
             });
 
@@ -100,25 +102,44 @@
             .catch(error => console.error('Error:', error));
         }
 
-        function fetchSuggestions(artist, songName) {
-            fetch(`/get_suggestions?artist=${encodeURIComponent(artist)}&songName=${encodeURIComponent(songName)}`)
-                .then(response => response.json())
-                .then(data => {
-                    const suggestionsTable = document.querySelector('#suggestions');
-                    suggestionsTable.innerHTML = '';
-                    data.suggestions.forEach(suggestion => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${suggestion.artist}</td>
-                            <td>${suggestion.song}</td>
-                            <td>${suggestion.year}</td>
-                            <td>${suggestion.genre}</td>
-                            <td>${suggestion.duration}</td>
-                        `;
-                        suggestionsTable.appendChild(row);
-                    });
+        // Function to fetch suggestions when a song is added
+        function fetchSuggestions(track_name, artist_name) {
+            // Prepare the data to send in the POST request
+            const requestData = {
+                track_name: track_name,
+                artist_name: artist_name
+            };
+
+            fetch('/suggestions', {
+                method: 'POST',  // Change the method to POST
+                headers: {
+                    'Content-Type': 'application/json'  // Set the content type to JSON
+                },
+                body: JSON.stringify(requestData)  // Send the track name and artist name in the request body
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Update the suggestions table with the returned suggestions
+                const suggestionsTable = document.getElementById('suggestions-table').getElementsByTagName('tbody')[0];
+                suggestionsTable.innerHTML = '';  // Clear existing rows
+
+                // Populate the table with new suggestions
+                data.suggestions.forEach(suggestion => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${suggestion.track_name}</td>
+                        <td>${suggestion.artist_name}</td>
+                        <td>${suggestion.genre}</td>
+                        <td>${suggestion.year}</td>
+                        <td>${suggestion.duration}</td>
+                    `;
+                    suggestionsTable.appendChild(row);
                 });
+            })
+            .catch(error => console.error('Error fetching suggestions:', error));
         }
+
+
     </script>
     <style>
         .suggestions_table {
@@ -179,19 +200,29 @@
     <div class="spacer"></div>
     <h2>Suggestions</h2>
     <div class="suggestions_table">
-        <table>
+        <table id="suggestions-table">
             <thead>
                 <tr>
-                    <th>Artist</th>
-                    <th>Song Name</th>
-                    <th>Year</th>
+                    <th>Track Name</th>
+                    <th>Artist Name</th>
                     <th>Genre</th>
+                    <th>Year</th>
                     <th>Duration</th>
                 </tr>
             </thead>
-            <tbody id="suggestions">
-                </tbody>
+            <tbody>
+                {% for suggestion in suggestions %}
+                <tr>
+                    <td>{{ suggestion.track_name }}</td>
+                    <td>{{ suggestion.artist_name }}</td>
+                    <td>{{ suggestion.genre }}</td>
+                    <td>{{ suggestion.year }}</td>
+                    <td>{{ suggestion.duration }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
+        
     </div>
 
     <div class="spacer"></div> 

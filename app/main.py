@@ -15,6 +15,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 import os
 from dotenv import load_dotenv
 from sklearn.metrics.pairwise import cosine_similarity
+import mysql.connector
 
 app = Flask(__name__)
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
@@ -246,46 +247,45 @@ def recommendations():
         logger.error(f'Error in recommendations: {e}', exc_info=True)
         return jsonify({"message": "An error occurred"}), 500
 
-
-@bp.route('/suggestions', methods=['GET'])
+@bp.route('/suggestions', methods=['POST'])
 def suggestions():
-    track_id = request.args.get('track_id')
-    logger.info(f'Suggestions request for track_id: {track_id}')  # Log the request
+    data = request.get_json()  # Parse JSON data from the request body
+    track_name = data.get('track_name')
+    artist_name = data.get('artist_name')
 
-    if not track_id:
-        logger.error('Track ID is required for suggestions.')
-        return {'error': 'Track ID is required.'}, 400
+    logging.info(f"Received request for suggestions: {data}")
 
-    # Find the KMeans cluster for the selected track (modify for chosen algorithm)
-    selected_track = SpotifyData.query.filter_by(track_id=track_id).first()
-    if not selected_track or not selected_track.kmeans:  # Adjust for chosen algorithm
-        logger.error('Track not found or not clustered.')
-        return {'error': 'Track not found or not clustered.'}, 404
+    # Query the database to find the selected song
+    try:
+        selected_song = SpotifyData.query.filter_by(track_name=track_name, artist_name=artist_name).first()
 
-    cluster = selected_track.kmeans
+        if not selected_song:
+            logging.warning("No matching song found.")
+            return jsonify({'error': 'Song not found'}), 404
 
-    # Fetch other songs in the same cluster
-    similar_songs = SpotifyData.query.filter_by(kmeans=cluster).limit(10).all()
-    logger.info(f"Number of similar songs found: {len(similar_songs)}")
-    for song in similar_songs:
-        logger.info(f"Considering song: {song.track_name} by {song.artist_name}")
+        # Now find songs in the same cluster (using KMeans, DBSCAN, or Agglomerative)
+        similar_songs = SpotifyData.query.filter(
+            SpotifyData.kmeans == selected_song.kmeans  # You can switch to dbscan/agglomerative if needed
+        ).limit(10).all()
 
+        if not similar_songs:
+            logging.warning("No similar songs found for the selected song.")
+            return jsonify({'error': 'No similar songs found'}), 404
 
-    # Prepare suggestions for rendering
-    suggestions_list = [
-        {
-            'track_id': song.track_id,
-            'artist_name': song.artist_name,
+        # Prepare the response data with relevant details (track name, artist, genre, etc.)
+        suggestions_list = [{
             'track_name': song.track_name,
-            'year': song.year,
+            'artist_name': song.artist_name,
             'genre': song.genre,
-            'duration': song.duration_in_minutes_seconds(),  # Assuming this method exists
-        }
-        for song in similar_songs
-    ]
+            'year': song.year,
+            'duration': song.duration_ms
+        } for song in similar_songs]
 
-    logger.info(f'Number of suggestions found: {len(suggestions_list)}')  # Log the number of suggestions
-    return jsonify({'suggestions': suggestions_list}), 200
+        return jsonify({'suggestions': suggestions_list})
+
+    except Exception as e:
+        logging.error(f"Error while fetching suggestions: {e}")
+        return jsonify({'error': 'Failed to fetch suggestions'}), 500
 
 @bp.route('/')
 def home():
