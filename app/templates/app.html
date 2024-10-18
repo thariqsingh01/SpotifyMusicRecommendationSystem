@@ -41,9 +41,9 @@
                     const year = cells[2].textContent;
                     const genre = cells[3].textContent;
                     const duration = cells[4].textContent;
-    
+
                     addToChoices(track_name, artist_name);
-    
+            
                     // Fetch suggestions based on the added song
                     fetchSuggestions(track_name, artist_name);
                 }
@@ -75,8 +75,11 @@
             }
     
             // Function to remove a row from the user choices table
-            function removeRow(icon) {
-                icon.parentElement.parentElement.remove();
+            window.removeRow = function(icon) {
+                const row = icon.closest('tr'); // Find the closest <tr> parent of the clicked icon
+                if (row) {
+                    row.remove(); // Remove the row
+                }
             }
     
             // Function to search for songs and submit the user choices to the Flask endpoint
@@ -147,7 +150,7 @@
                     } else {
                         console.warn('No suggestions found.');
                     }
-                })
+                        })
                 .catch(error => console.error('Error fetching suggestions:', error));
             }
         });

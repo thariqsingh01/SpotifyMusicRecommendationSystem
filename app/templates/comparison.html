@@ -1,5 +1,3 @@
-<!--comparison.html-->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,47 +10,78 @@
     <div class="container">
         <h1>Clustering Comparison Results</h1>
 
-        <!-- KMeans Results Table -->
-        <h2>KMeans Clustering Results</h2>
-        {% if kmeans_counts %}
-            <div class="table-responsive">
-                {{ kmeans_counts|safe }}
-            </div>
-        {% else %}
-            <p>No results found for KMeans clustering.</p>
-        {% endif %}
-        
-        <!-- DBSCAN Results Table -->
-        <h2>DBSCAN Clustering Results</h2>
-        {% if dbscan_counts %}
-            <div class="table-responsive">
-                {{ dbscan_counts|safe }}
-            </div>
-        {% else %}
-            <p>No results found for DBSCAN clustering.</p>
-        {% endif %}
-        
-        <!-- Agglomerative Results Table -->
-        <h2>Agglomerative Clustering Results</h2>
-        {% if agglomerative_counts %}
-            <div class="table-responsive">
-                {{ agglomerative_counts|safe }}
-            </div>
-        {% else %}
-            <p>No results found for Agglomerative clustering.</p>
-        {% endif %}
-        
-        <!-- CNN Results Table -->
-        <h2>CNN Clustering Results</h2>
-        {% if cnn_counts %}
-            <div class="table-responsive">
-                {{ cnn_counts|safe }}
-            </div>
-        {% else %}
-            <p>No results found for CNN clustering.</p>
-        {% endif %}
-        
-        <!-- Section for Graphs -->
+        <!-- Section for Cluster Count Tables at the Top -->
+        <div id="tables">
+            <!-- KMeans Results Table -->
+            <h2>KMeans Clustering Results</h2>
+            {% if kmeans_counts %}
+                <div class="table-responsive">
+                    {{ kmeans_counts|safe }}
+                </div>
+            {% else %}
+                <p>No results found for KMeans clustering.</p>
+            {% endif %}
+
+            <!-- DBSCAN Results Table -->
+            <h2>DBSCAN Clustering Results</h2>
+            {% if dbscan_counts %}
+                <div class="table-responsive">
+                    {{ dbscan_counts|safe }}
+                </div>
+            {% else %}
+                <p>No results found for DBSCAN clustering.</p>
+            {% endif %}
+
+            <!-- Agglomerative Results Table -->
+            <h2>Agglomerative Clustering Results</h2>
+            {% if agglomerative_counts %}
+                <div class="table-responsive">
+                    {{ agglomerative_counts|safe }}
+                </div>
+            {% else %}
+                <p>No results found for Agglomerative clustering.</p>
+            {% endif %}
+        </div>
+
+        <!-- Section for Evaluation Metrics -->
+        <div id="metrics">
+            <h2>Clustering Evaluation Metrics</h2>
+            
+            <h3>KMeans Metrics</h3>
+            <ul>
+                {% if kmeans_metrics %}
+                    {% for metric, value in kmeans_metrics.items() %}
+                        <li>{{ metric }}: {{ value }}</li>
+                    {% endfor %}
+                {% else %}
+                    <p>No metrics found for KMeans clustering.</p>
+                {% endif %}
+            </ul>
+
+            <h3>DBSCAN Metrics</h3>
+            <ul>
+                {% if dbscan_metrics %}
+                    {% for metric, value in dbscan_metrics.items() %}
+                        <li>{{ metric }}: {{ value }}</li>
+                    {% endfor %}
+                {% else %}
+                    <p>No metrics found for DBSCAN clustering.</p>
+                {% endif %}
+            </ul>
+
+            <h3>Agglomerative Metrics</h3>
+            <ul>
+                {% if agglomerative_metrics %}
+                    {% for metric, value in agglomerative_metrics.items() %}
+                        <li>{{ metric }}: {{ value }}</li>
+                    {% endfor %}
+                {% else %}
+                    <p>No metrics found for Agglomerative clustering.</p>
+                {% endif %}
+            </ul>
+        </div>
+
+        <!-- Section for Graphs Below the Tables -->
         <h2>Clustering Graphs</h2>
         <div id="graphs">
             <h3>KMeans Clustering Graph</h3>
@@ -74,13 +103,6 @@
                 <img src="{{ url_for('static', filename='graphs/agglomerative_results.png') }}" alt="Agglomerative Clustering Graph">
             {% else %}
                 <p>No graph available for Agglomerative clustering.</p>
-            {% endif %}
-
-            <h3>CNN Clustering Graph</h3>
-            {% if cnn_graph %}
-                <img src="{{ url_for('static', filename='graphs/cnn_results.png') }}" alt="CNN Clustering Graph">
-            {% else %}
-                <p>No graph available for CNN clustering.</p>
             {% endif %}
         </div>
         

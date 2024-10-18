@@ -125,10 +125,16 @@ body {
 /* Scrollable container for tables */
 .search_table-container,
 .suggestions_table,
-#suggesions-table,
-.choices_table {
+#suggesions-table {
   max-height: 300px;
   min-height: 300px;
+  overflow-y: auto;
+  width: 90%;
+  margin: 0 auto;
+  margin-top: 20px; /* Add space above tables */
+}
+
+.choices_table{
   overflow-y: auto;
   width: 90%;
   margin: 0 auto;

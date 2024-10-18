@@ -1,77 +1,96 @@
-#comparison.py
+# comparison.py
 
+from flask import Blueprint, render_template, current_app
+from app import db
+from app.models import SpotifyData
 import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-import tensorflow as tf
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
 import logging
-import os
+
+bp = Blueprint('comparison', __name__)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Load your pre-trained CNN model
-def load_cnn_model(model_path):
-    logger.info(f"Loading CNN model from: {model_path}")
-    model = tf.keras.models.load_model(model_path)
-    logger.info("CNN model loaded successfully.")
-    return model
+def fetch_cluster_data():
+    """
+    Fetches cluster data from the SpotifyData model for comparison.
+    Returns: DataFrame: A DataFrame containing cluster group counts and other characteristics.
+    """
+    with current_app.app_context():
+        # Execute a query to get cluster group counts for KMeans, DBSCAN, and Agglomerative
+        cluster_query = """
+            SELECT
+                kmeans AS cluster_group,
+                COUNT(*) AS count,
+                'KMeans' AS algorithm
+            FROM SpotifyData
+            WHERE kmeans IS NOT NULL
+            GROUP BY kmeans
 
-def perform_cnn_clustering(data):
-    logger.info("Starting CNN clustering process.")
+            UNION ALL
 
-    # Example: Extract features from the data
-    features = data[['danceability', 'energy']].values  # Adjust based on your feature set
-    logger.debug(f"Extracted features: {features[:5]}")  # Log first 5 rows of features for debugging
+            SELECT
+                dbscan AS cluster_group,
+                COUNT(*) AS count,
+                'DBSCAN' AS algorithm
+            FROM SpotifyData
+            WHERE dbscan IS NOT NULL
+            GROUP BY dbscan
 
-    # Scale the features
-    scaler = StandardScaler()
-    scaled_features = scaler.fit_transform(features)
-    logger.info("Features scaled successfully.")
+            UNION ALL
 
-    # Split data into training and testing sets
-    X_train, X_test = train_test_split(scaled_features, test_size=0.2, random_state=42)
-    logger.info("Data split into training and testing sets.")
+            SELECT
+                agglomerative AS cluster_group,
+                COUNT(*) AS count,
+                'Agglomerative' AS algorithm
+            FROM SpotifyData
+            WHERE agglomerative IS NOT NULL
+            GROUP BY agglomerative
 
-    # Load the pre-trained CNN model
-    model = load_cnn_model('path_to_your_model.h5')  # Adjust this path
+            ORDER BY algorithm, cluster_group;
+        """
+        # Execute the query and convert the results to a DataFrame
+        combined_results = pd.read_sql_query(cluster_query, db.engine)
 
-    # Perform predictions to get cluster assignments
-    cnn_predictions = model.predict(X_test)
-    cnn_clusters = np.argmax(cnn_predictions, axis=1)  # Assuming your model outputs class probabilities
-    logger.info(f"CNN predictions made, cluster assignments: {cnn_clusters[:5]}")  # Log first 5 predictions
+        logger.info("Cluster data fetched successfully.")
+        return combined_results
 
-    # Update the 'cnn' column in the Spotify table
-    # Assuming you have access to the original data to match with predictions
-    data.loc[data.index.isin(X_test.index), 'cnn'] = cnn_clusters  # Match clusters back to original indices
-    logger.info("Updated 'cnn' column in the original data.")
+def fetch_recommendations():
+    """
+    Fetches sample recommendations based on user choices for comparison.
+    Returns: list: A list of dictionaries containing recommendations for different clustering methods.
+    """
+    sample_recommendations = {
+        "KMeans": [
+            {'track_name': 'Song A', 'artist_name': 'Artist A', 'genre': 'Pop', 'year': 2022},
+            {'track_name': 'Song B', 'artist_name': 'Artist B', 'genre': 'Rock', 'year': 2021},
+        ],
+        "DBSCAN": [
+            {'track_name': 'Song C', 'artist_name': 'Artist C', 'genre': 'Jazz', 'year': 2020},
+            {'track_name': 'Song D', 'artist_name': 'Artist D', 'genre': 'Hip Hop', 'year': 2023},
+        ],
+        "Agglomerative": [
+            {'track_name': 'Song E', 'artist_name': 'Artist E', 'genre': 'Classical', 'year': 2019},
+            {'track_name': 'Song F', 'artist_name': 'Artist F', 'genre': 'Indie', 'year': 2018},
+        ]
+    }
+    
+    logger.info("Sample recommendations fetched successfully.")
+    return sample_recommendations
 
-    return data
+@bp.route('/comparison', methods=['GET'])
+def comparison():
+    """
+    Renders the comparison page with cluster data and recommendations.
+    Returns: HTML: The rendered comparison page.
+    """
+    try:
+        cluster_data = fetch_cluster_data()
+        recommendations = fetch_recommendations()
 
-def generate_cnn_graph(data):
-    logger.info("Generating CNN clustering graph.")
+        return render_template('comparison.html', cluster_data=cluster_data, recommendations=recommendations)
 
-    # Filter out the data where 'cnn' is not null
-    filtered_data = data[data['cnn'].notnull()]
-    logger.info(f"Filtered data for graph: {filtered_data.shape[0]} rows with valid 'cnn' values.")
-
-    plt.figure(figsize=(10, 6))
-
-    # Create a scatter plot based on the clusters
-    plt.scatter(filtered_data['danceability'], filtered_data['energy'], c=filtered_data['cnn'], cmap='viridis', marker='o')
-
-    plt.title("CNN Clustering Results")
-    plt.xlabel("Danceability")
-    plt.ylabel("Energy")
-    plt.colorbar(label='Cluster')
-
-    # Create the directory if it doesn't exist
-    graphs_dir = 'app/static/graphs/'
-    os.makedirs(graphs_dir, exist_ok=True)
-
-    plt.savefig(os.path.join(graphs_dir, 'cnn_results.png'))
-    logger.info(f"CNN clustering graph saved at: {os.path.join(graphs_dir, 'cnn_results.png')}")
-    plt.close()
+    except Exception as e:
+        logger.error(f"Error fetching comparison data: {e}")
+        return render_template('comparison.html', error="An error occurred while fetching data.")
