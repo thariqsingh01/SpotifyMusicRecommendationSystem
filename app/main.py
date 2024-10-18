@@ -16,6 +16,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 import os
 from dotenv import load_dotenv
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics import pairwise_distances
 import mysql.connector
 from sklearn.metrics import silhouette_score, davies_bouldin_score, adjusted_rand_score
 
@@ -319,7 +320,15 @@ def comparison():
         # Get the database engine
         engine = db.engine
 
-        # Single query to retrieve cluster groups and their counts for KMeans, DBSCAN, and Agglomerative
+        # Unified query to fetch relevant data
+        feature_query = """
+            SELECT danceability, energy, kmeans, dbscan, agglomerative 
+            FROM Spotify 
+            WHERE kmeans IS NOT NULL OR dbscan IS NOT NULL OR agglomerative IS NOT NULL
+        """
+        df_features = pd.read_sql(feature_query, engine).dropna()
+
+        # Prepare clustering results
         cluster_query = """
             SELECT
                 kmeans AS cluster_group,
@@ -348,35 +357,17 @@ def comparison():
             FROM Spotify
             WHERE agglomerative IS NOT NULL
             GROUP BY agglomerative
-
             ORDER BY algorithm, cluster_group;
         """
-
-        # Execute the query and convert the results to a DataFrame
         combined_results = pd.read_sql(cluster_query, engine)
 
-        # Separate DataFrames for each algorithm's counts
-        kmeans_counts_html = combined_results[combined_results['algorithm'] == 'KMeans'][['cluster_group', 'count']].dropna().to_html(classes='table table-striped', index=False)
-        dbscan_counts_html = combined_results[combined_results['algorithm'] == 'DBSCAN'][['cluster_group', 'count']].dropna().to_html(classes='table table-striped', index=False)
-        agglomerative_counts_html = combined_results[combined_results['algorithm'] == 'Agglomerative'][['cluster_group', 'count']].dropna().to_html(classes='table table-striped', index=False)
-
-        # Prepare DataFrames for plotting
-        df_kmeans = pd.read_sql("SELECT danceability, energy, kmeans FROM Spotify WHERE kmeans IS NOT NULL", engine)
-        df_dbscan = pd.read_sql("SELECT danceability, energy, dbscan FROM Spotify WHERE dbscan IS NOT NULL", engine)
-        df_agglomerative = pd.read_sql("SELECT danceability, energy, agglomerative FROM Spotify WHERE agglomerative IS NOT NULL", engine)
-
         # Generate graphs
-        generate_kmeans_graph(df_kmeans)
-        generate_dbscan_graph(df_dbscan)
-        generate_agglomerative_graph(df_agglomerative)
+        generate_kmeans_graph(df_features[['danceability', 'energy', 'kmeans']])
+        generate_dbscan_graph(df_features[['danceability', 'energy', 'dbscan']])
+        generate_agglomerative_graph(df_features[['danceability', 'energy', 'agglomerative']])
 
         # Calculate evaluation metrics
-        metrics = {
-            'Silhouette Score': calculate_silhouette_score(engine),
-            'Davies-Bouldin Index': calculate_davies_bouldin_index(engine),
-            'Adjusted Rand Index (ARI)': calculate_ari(engine),
-            'Dunn Index': calculate_dunn_index(engine)
-        }
+        metrics = calculate_metrics(engine)
 
         # Set paths for graph images
         kmeans_graph = '/static/graphs/kmeans_results.png'
@@ -384,9 +375,9 @@ def comparison():
         agglomerative_graph = '/static/graphs/agglomerative_results.png'
 
         return render_template('comparison.html',
-                               kmeans_counts=kmeans_counts_html,
-                               dbscan_counts=dbscan_counts_html,
-                               agglomerative_counts=agglomerative_counts_html,
+                               kmeans_counts=combined_results[combined_results['algorithm'] == 'KMeans'][['cluster_group', 'count']].to_html(classes='table table-striped', index=False),
+                               dbscan_counts=combined_results[combined_results['algorithm'] == 'DBSCAN'][['cluster_group', 'count']].to_html(classes='table table-striped', index=False),
+                               agglomerative_counts=combined_results[combined_results['algorithm'] == 'Agglomerative'][['cluster_group', 'count']].to_html(classes='table table-striped', index=False),
                                kmeans_graph=kmeans_graph,
                                dbscan_graph=dbscan_graph,
                                agglomerative_graph=agglomerative_graph,
@@ -403,139 +394,78 @@ def pairwise_distance(X1, X2):
     """Calculate the pairwise distance between two sets of points."""
     return cdist(X1, X2, metric='euclidean')
 
-def calculate_silhouette_score(engine):
-    # Query to get features and clustering labels
+from sklearn.metrics import silhouette_score, davies_bouldin_score, pairwise_distances
+import numpy as np
+import pandas as pd
+
+def calculate_metrics(engine):
+    # Ensure that engine is the correct SQLAlchemy connection object
+    if not hasattr(engine, 'execute'):
+        raise ValueError("The provided engine is not a valid SQLAlchemy engine.")
+    
     df = pd.read_sql("SELECT danceability, energy, kmeans, dbscan, agglomerative FROM Spotify", engine)
 
     # Drop rows where all clustering labels are NaN
     df = df.dropna(subset=['kmeans', 'dbscan', 'agglomerative'], how='all')
-    
-    # Calculate Silhouette Score for KMeans
-    if not df['kmeans'].isnull().all():
-        kmeans_score = silhouette_score(df[['danceability', 'energy']], df['kmeans'])
-    else:
-        kmeans_score = None
-    
-    # Calculate Silhouette Score for DBSCAN
-    if not df['dbscan'].isnull().all():
-        dbscan_score = silhouette_score(df[['danceability', 'energy']], df['dbscan'])
-    else:
-        dbscan_score = None
-    
-    # Calculate Silhouette Score for Agglomerative
-    if not df['agglomerative'].isnull().all():
-        agglomerative_score = silhouette_score(df[['danceability', 'energy']], df['agglomerative'])
-    else:
-        agglomerative_score = None
 
-    return {
-        'KMeans Silhouette Score': kmeans_score,
-        'DBSCAN Silhouette Score': dbscan_score,
-        'Agglomerative Silhouette Score': agglomerative_score
-    }
+    metrics = {}
 
-def calculate_davies_bouldin_index(engine):
-    df = pd.read_sql("SELECT danceability, energy, kmeans, dbscan, agglomerative FROM Spotify", engine)
-    
-    # Drop rows where all clustering labels are NaN
-    df = df.dropna(subset=['kmeans', 'dbscan', 'agglomerative'], how='all')
-    
-    # Calculate Davies-Bouldin Index for KMeans
-    if not df['kmeans'].isnull().all():
-        kmeans_db_index = davies_bouldin_score(df[['danceability', 'energy']], df['kmeans'])
-    else:
-        kmeans_db_index = None
-    
-    # Calculate Davies-Bouldin Index for DBSCAN
-    if not df['dbscan'].isnull().all():
-        dbscan_db_index = davies_bouldin_score(df[['danceability', 'energy']], df['dbscan'])
-    else:
-        dbscan_db_index = None
-    
-    # Calculate Davies-Bouldin Index for Agglomerative
-    if not df['agglomerative'].isnull().all():
-        agglomerative_db_index = davies_bouldin_score(df[['danceability', 'energy']], df['agglomerative'])
-    else:
-        agglomerative_db_index = None
+    # Calculate Silhouette Scores
+    metrics['KMeans Silhouette Score'] = (
+        silhouette_score(df[['danceability', 'energy']], df['kmeans']) 
+        if not df['kmeans'].isnull().all() else None
+    )
+    metrics['DBSCAN Silhouette Score'] = (
+        silhouette_score(df[['danceability', 'energy']], df['dbscan']) 
+        if not df['dbscan'].isnull().all() else None
+    )
+    metrics['Agglomerative Silhouette Score'] = (
+        silhouette_score(df[['danceability', 'energy']], df['agglomerative']) 
+        if not df['agglomerative'].isnull().all() else None
+    )
 
-    return {
-        'KMeans Davies-Bouldin Index': kmeans_db_index,
-        'DBSCAN Davies-Bouldin Index': dbscan_db_index,
-        'Agglomerative Davies-Bouldin Index': agglomerative_db_index
-    }
+    # Calculate Davies-Bouldin Index
+    metrics['KMeans Davies-Bouldin Index'] = (
+        davies_bouldin_score(df[['danceability', 'energy']], df['kmeans']) 
+        if not df['kmeans'].isnull().all() else None
+    )
+    metrics['DBSCAN Davies-Bouldin Index'] = (
+        davies_bouldin_score(df[['danceability', 'energy']], df['dbscan']) 
+        if not df['dbscan'].isnull().all() else None
+    )
+    metrics['Agglomerative Davies-Bouldin Index'] = (
+        davies_bouldin_score(df[['danceability', 'energy']], df['agglomerative']) 
+        if not df['agglomerative'].isnull().all() else None
+    )
 
-def calculate_ari(engine):
-    # Dummy true labels (you need to replace this with your actual true labels)
-    true_labels = []  # Replace with actual true labels from your dataset
-    
-    df = pd.read_sql("SELECT kmeans, dbscan, agglomerative FROM Spotify", engine)
-    
-    # Drop rows where all clustering labels are NaN
-    df = df.dropna(subset=['kmeans', 'dbscan', 'agglomerative'], how='all')
-    
-    results = {}
-    
-    # Calculate ARI for KMeans
-    if true_labels and not df['kmeans'].isnull().all():
-        ari_kmeans = adjusted_rand_score(true_labels, df['kmeans'])
-        results['KMeans ARI'] = ari_kmeans
-
-    # Calculate ARI for DBSCAN
-    if true_labels and not df['dbscan'].isnull().all():
-        ari_dbscan = adjusted_rand_score(true_labels, df['dbscan'])
-        results['DBSCAN ARI'] = ari_dbscan
-    
-    # Calculate ARI for Agglomerative
-    if true_labels and not df['agglomerative'].isnull().all():
-        ari_agglomerative = adjusted_rand_score(true_labels, df['agglomerative'])
-        results['Agglomerative ARI'] = ari_agglomerative
-
-    return results
-
-def calculate_dunn_index(engine):
-    df = pd.read_sql("SELECT danceability, energy, kmeans, dbscan, agglomerative FROM Spotify", engine)
-    
-    # Drop rows where all clustering labels are NaN
-    df = df.dropna(subset=['kmeans', 'dbscan', 'agglomerative'], how='all')
-
-    results = {}
-
+    # Calculate Dunn Index
     def dunn_index(clusters):
-        # Calculate the Dunn Index for the given clusters
         if len(np.unique(clusters)) <= 1:
             return None
 
-        # Calculate inter-cluster distances
         inter_cluster_distances = []
         intra_cluster_distances = []
 
-        # Calculate the minimum distance between clusters
         for i in np.unique(clusters):
             for j in np.unique(clusters):
                 if i != j:
-                    inter_cluster_distances.append(np.min(pairwise_distance(df[df['kmeans'] == i][['danceability', 'energy']], 
-                                                                            df[df['kmeans'] == j][['danceability', 'energy']])))
+                    inter_cluster_distances.append(np.min(pairwise_distances(df[df[clusters.name] == i][['danceability', 'energy']],
+                                                                             df[df[clusters.name] == j][['danceability', 'energy']])))
 
-        # Calculate the maximum distance within each cluster
         for cluster in np.unique(clusters):
-            intra_cluster_distances.append(np.max(pairwise_distance(df[df['kmeans'] == cluster][['danceability', 'energy']], 
-                                                                    df[df['kmeans'] == cluster][['danceability', 'energy']])))
+            intra_cluster_distances.append(np.max(pairwise_distances(df[df[clusters.name] == cluster][['danceability', 'energy']],
+                                                                    df[df[clusters.name] == cluster][['danceability', 'energy']])))
 
         return np.min(inter_cluster_distances) / np.max(intra_cluster_distances)
 
-    # Calculate Dunn Index for KMeans
-    if not df['kmeans'].isnull().all():
-        dunn_kmeans = dunn_index(df['kmeans'])
-        results['KMeans Dunn Index'] = dunn_kmeans
+    metrics['KMeans Dunn Index'] = (
+        dunn_index(df['kmeans']) if not df['kmeans'].isnull().all() else None
+    )
+    metrics['DBSCAN Dunn Index'] = (
+        dunn_index(df['dbscan']) if not df['dbscan'].isnull().all() else None
+    )
+    metrics['Agglomerative Dunn Index'] = (
+        dunn_index(df['agglomerative']) if not df['agglomerative'].isnull().all() else None
+    )
 
-    # Calculate Dunn Index for DBSCAN
-    if not df['dbscan'].isnull().all():
-        dunn_dbscan = dunn_index(df['dbscan'])
-        results['DBSCAN Dunn Index'] = dunn_dbscan
-
-    # Calculate Dunn Index for Agglomerative
-    if not df['agglomerative'].isnull().all():
-        dunn_agglomerative = dunn_index(df['agglomerative'])
-        results['Agglomerative Dunn Index'] = dunn_agglomerative
-
-    return results
+    return metrics
