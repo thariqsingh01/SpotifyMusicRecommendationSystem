@@ -12,28 +12,25 @@
         document.addEventListener('DOMContentLoaded', function() {
             let selectedRow = null;
     
-            // Add click event listener to rows in the search table
-            document.querySelector('#results').addEventListener('click', function(event) {
+            // Function to handle row selection for both tables
+            function handleRowClick(event) {
                 if (event.target.tagName === 'TD') {
+                    // Remove the 'selected' class from the previously selected row, if any
                     if (selectedRow) {
                         selectedRow.classList.remove('selected');
+                        selectedRow.style.backgroundColor = '';  // Reset background color
                     }
-                    selectedRow = event.target.parentElement;
-                    selectedRow.classList.add('selected');
-                }
-            });
     
-            // Add click event listener to the suggestions table
-            document.querySelector('#suggestions-table tbody').addEventListener('click', function(event) {
-                if (event.target.tagName === 'TD') {
-                    if (selectedRow) {
-                        selectedRow.classList.remove('selected');
-                    }
+                    // Select the clicked row
                     selectedRow = event.target.parentElement;
                     selectedRow.classList.add('selected');
-                    selectedRow.style.backgroundColor = '#1DB954';
+                    selectedRow.style.backgroundColor = '#1DB954';  // Highlight selected row
                 }
-            });
+            }
+    
+            // Add click event listener to both the #results and #suggestions-table
+            document.querySelector('#results').addEventListener('click', handleRowClick);
+            document.querySelector('#suggestions-table tbody').addEventListener('click', handleRowClick);
     
             // Add click event listener to the Add button
             document.querySelector('#add-button').addEventListener('click', function() {
@@ -46,12 +43,13 @@
                     const duration = cells[4].textContent;
     
                     addToChoices(track_name, artist_name);
-                    
+    
                     // Fetch suggestions based on the added song
                     fetchSuggestions(track_name, artist_name);
                 }
             });
     
+            // Function to add a song to the user choices table
             function addToChoices(track_name, artist_name) {
                 const tableBody = document.querySelector('#choices');
                 const newRow = document.createElement('tr');
@@ -72,86 +70,87 @@
     
                 // Remove selection after adding to choices
                 selectedRow.classList.remove('selected');
+                selectedRow.style.backgroundColor = '';  // Reset background color
                 selectedRow = null;
             }
     
-        });
+            // Function to remove a row from the user choices table
+            function removeRow(icon) {
+                icon.parentElement.parentElement.remove();
+            }
     
-        function removeRow(icon) {
-            icon.parentElement.parentElement.remove();
-        }
+            // Function to search for songs and submit the user choices to the Flask endpoint
+            function search() {
+                const userChoices = [];
     
-        function search() {
-            const userChoices = [];
+                // Extract song and artist from the user choices table
+                const rows = document.querySelectorAll('#choices tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    const track_name = cells[0].textContent;
+                    const artist_name = cells[1].textContent;
     
-            // Extract song and artist from the user choices table
-            const rows = document.querySelectorAll('#choices tr');
-            rows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                const track_name = cells[0].textContent;
-                const artist_name = cells[1].textContent;
-    
-                userChoices.push({ track_name, artist_name });
-            });
-    
-            // Submit choices to Flask endpoint
-            fetch('/recommendations', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(userChoices),
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.text(); // Get the response as text
-            })
-            .then(html => {
-                // Replace the current document's body with the new HTML
-                document.open();
-                document.write(html);
-                document.close();
-            })
-            .catch(error => console.error('Error:', error));
-        }
-    
-        // Function to fetch suggestions when a song is added
-        function fetchSuggestions(track_name, artist_name) {
-            // Prepare the data to send in the POST request
-            const requestData = {
-                track_name: track_name,
-                artist_name: artist_name
-            };
-    
-            fetch('/suggestions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                const suggestionsTable = document.getElementById('suggestions-table').getElementsByTagName('tbody')[0];
-                suggestionsTable.innerHTML = '';  // Clear existing rows
-    
-                // Populate the table with new suggestions
-                data.suggestions.forEach(suggestion => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${suggestion.track_name}</td>
-                        <td>${suggestion.artist_name}</td>
-                        <td>${suggestion.genre}</td>
-                        <td>${suggestion.year}</td>
-                        <td>${suggestion.duration}</td>
-                    `;
-                    suggestionsTable.appendChild(row);
+                    userChoices.push({ track_name, artist_name });
                 });
-            })
-            .catch(error => console.error('Error fetching suggestions:', error));
-        }
+    
+                // Submit choices to Flask endpoint
+                fetch('/recommendations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(userChoices),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.text(); // Get the response as text
+                })
+                .then(html => {
+                    // Replace the current document's body with the new HTML
+                    document.open();
+                    document.write(html);
+                    document.close();
+                })
+                .catch(error => console.error('Error:', error));
+            }
+    
+            // Function to fetch suggestions when a song is added
+            function fetchSuggestions(track_name, artist_name) {
+                console.log('Fetching suggestions for:', track_name, artist_name);  // Debug log
+
+                fetch('/suggestions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ track_name, artist_name })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const suggestionsTable = document.getElementById('suggestions-table').getElementsByTagName('tbody')[0];
+                    suggestionsTable.innerHTML = '';  // Clear existing rows
+
+                    if (data.suggestions && data.suggestions.length > 0) {
+                        data.suggestions.forEach(suggestion => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${suggestion.track_name}</td>
+                                <td>${suggestion.artist_name}</td>
+                                <td>${suggestion.genre}</td>
+                                <td>${suggestion.year}</td>
+                                <td>${suggestion.duration}</td>
+                            `;
+                            suggestionsTable.appendChild(row);
+                        });
+                    } else {
+                        console.warn('No suggestions found.');
+                    }
+                })
+                .catch(error => console.error('Error fetching suggestions:', error));
+            }
+        });
     </script>
     
 </head>
@@ -198,7 +197,7 @@
                     </tr>
                 </thead>
                 <tbody id="results">
-                    </tbody>
+                </tbody>
             </table>
         </div>
     </section>
@@ -216,7 +215,7 @@
                     <th>Duration</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="suggestions">
                 {% for suggestion in suggestions %}
                 <tr>
                     <td>{{ suggestion.track_name }}</td>
@@ -248,7 +247,7 @@
             </tr>
         </thead>
         <tbody id="choices">
-            </tbody>
+        </tbody>
     </table>
 </section>
 <br><br><br><br><br>

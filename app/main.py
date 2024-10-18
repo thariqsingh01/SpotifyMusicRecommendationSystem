@@ -255,21 +255,37 @@ def suggestions():
 
     logging.info(f"Received request for suggestions: {data}")
 
-    # Query the database to find the selected song
     try:
+        # First, try to find the selected song
         selected_song = SpotifyData.query.filter_by(track_name=track_name, artist_name=artist_name).first()
 
         if not selected_song:
-            logging.warning("No matching song found.")
-            return jsonify({'error': 'Song not found'}), 404
+            logging.warning(f"No matching song found for track: {track_name}, artist: {artist_name}")
 
-        # Now find songs in the same cluster (using KMeans, DBSCAN, or Agglomerative)
-        similar_songs = SpotifyData.query.filter(
-            SpotifyData.kmeans == selected_song.kmeans  # You can switch to dbscan/agglomerative if needed
-        ).limit(10).all()
+            # If no matching song is found, suggest the next best song from the database
+            next_best_song = SpotifyData.query.order_by(SpotifyData.popularity.desc()).first()
+
+            if not next_best_song:
+                logging.warning("No songs available in the database.")
+                return jsonify({'error': 'No songs available to suggest'}), 404
+            
+            logging.info(f"Suggesting next best song: {next_best_song.track_name} by {next_best_song.artist_name}")
+
+            # Use the next best song's cluster to find similar songs
+            similar_songs = SpotifyData.query.filter(
+                SpotifyData.kmeans == next_best_song.kmeans  # Adjust according to your logic
+            ).limit(10).all()
+
+        else:
+            logging.info(f"Found selected song: {selected_song.track_name} by {selected_song.artist_name}")
+
+            # Use the selected song's cluster to find similar songs
+            similar_songs = SpotifyData.query.filter(
+                SpotifyData.kmeans == selected_song.kmeans  # You can switch to dbscan/agglomerative if needed
+            ).limit(10).all()
 
         if not similar_songs:
-            logging.warning("No similar songs found for the selected song.")
+            logging.warning("No similar songs found for the selected or fallback song.")
             return jsonify({'error': 'No similar songs found'}), 404
 
         # Prepare the response data with relevant details (track name, artist, genre, etc.)
@@ -281,11 +297,14 @@ def suggestions():
             'duration': song.duration_ms
         } for song in similar_songs]
 
+        logging.info(f"Returning {len(suggestions_list)} suggestions")
+
         return jsonify({'suggestions': suggestions_list})
 
     except Exception as e:
         logging.error(f"Error while fetching suggestions: {e}")
         return jsonify({'error': 'Failed to fetch suggestions'}), 500
+
 
 @bp.route('/')
 def home():
