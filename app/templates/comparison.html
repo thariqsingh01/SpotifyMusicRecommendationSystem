@@ -10,40 +10,7 @@
     <div class="container">
         <h1>Clustering Comparison Results</h1>
 
-        <!-- Section for Cluster Count Tables at the Top -->
-        <div id="tables">
-            <!-- KMeans Results Table -->
-            <h2>KMeans Clustering Results</h2>
-            {% if kmeans_counts %}
-                <div class="table-responsive">
-                    {{ kmeans_counts|safe }}
-                </div>
-            {% else %}
-                <p>No results found for KMeans clustering.</p>
-            {% endif %}
-
-            <!-- DBSCAN Results Table -->
-            <h2>DBSCAN Clustering Results</h2>
-            {% if dbscan_counts %}
-                <div class="table-responsive">
-                    {{ dbscan_counts|safe }}
-                </div>
-            {% else %}
-                <p>No results found for DBSCAN clustering.</p>
-            {% endif %}
-
-            <!-- Agglomerative Results Table -->
-            <h2>Agglomerative Clustering Results</h2>
-            {% if agglomerative_counts %}
-                <div class="table-responsive">
-                    {{ agglomerative_counts|safe }}
-                </div>
-            {% else %}
-                <p>No results found for Agglomerative clustering.</p>
-            {% endif %}
-        </div>
-
-        <!-- Section for Evaluation Metrics -->
+        <!-- Section for Evaluation Metrics (Moved to the top) -->
         <div id="metrics">
             <h2>Clustering Evaluation Metrics</h2>
             
@@ -79,6 +46,39 @@
                     <p>No metrics found for Agglomerative clustering.</p>
                 {% endif %}
             </ul>
+        </div>
+
+        <!-- Section for Cluster Count Tables -->
+        <div id="tables">
+            <!-- KMeans Results Table -->
+            <h2>KMeans Clustering Results</h2>
+            {% if kmeans_counts %}
+                <div class="table-responsive">
+                    {{ kmeans_counts|safe }}
+                </div>
+            {% else %}
+                <p>No results found for KMeans clustering.</p>
+            {% endif %}
+
+            <!-- DBSCAN Results Table -->
+            <h2>DBSCAN Clustering Results</h2>
+            {% if dbscan_counts %}
+                <div class="table-responsive">
+                    {{ dbscan_counts|safe }}
+                </div>
+            {% else %}
+                <p>No results found for DBSCAN clustering.</p>
+            {% endif %}
+
+            <!-- Agglomerative Results Table -->
+            <h2>Agglomerative Clustering Results</h2>
+            {% if agglomerative_counts %}
+                <div class="table-responsive">
+                    {{ agglomerative_counts|safe }}
+                </div>
+            {% else %}
+                <p>No results found for Agglomerative clustering.</p>
+            {% endif %}
         </div>
 
         <!-- Section for Graphs Below the Tables -->

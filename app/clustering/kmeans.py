@@ -8,6 +8,10 @@ import logging
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import os
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -78,19 +82,19 @@ def perform_kmeans_clustering(engine, n_clusters=100, batch_size=50000):
     finally:
         logger.info("Completed KMeans Clustering.")
 
-def generate_kmeans_graph(df):
+def generate_kmeans_graph(features, labels):
     # Log the initial state of the DataFrame for debugging
-    logger.info(f"DataFrame for KMeans graph: {df.head()}")
+    logger.info(f"DataFrame for KMeans graph: {features.head()}, Labels: {labels.head()}")
 
-    if df.empty:
+    if features.empty or labels.empty:
         logger.warning("No KMeans results found for graphing.")
         return
 
     plt.figure(figsize=(10, 6))
-    plt.scatter(df['danceability'], df['energy'], c=df['kmeans'], cmap='viridis', alpha=0.5)
+    plt.scatter(features['pca1'], features['pca2'], c=labels, cmap='viridis', alpha=0.5)
     plt.title('KMeans Clustering')
-    plt.xlabel('Danceability')
-    plt.ylabel('Energy')
+    plt.xlabel('PCA 1')
+    plt.ylabel('PCA 2')
     plt.colorbar(label='Cluster')
 
     graph_dir = 'app/static/graphs/'

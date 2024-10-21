@@ -8,7 +8,7 @@ from .clustering.dbscan import perform_dbscan_clustering, generate_dbscan_graph
 from .clustering.agglomerative import perform_agglomerative_clustering, generate_agglomerative_graph
 from scipy.spatial.distance import cdist
 from concurrent.futures import ProcessPoolExecutor
-from sqlalchemy import create_engine 
+from sqlalchemy import create_engine ,inspect,text
 import pandas as pd
 import numpy as np
 import logging
@@ -21,6 +21,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import pairwise_distances
 import mysql.connector
 from sklearn.metrics import silhouette_score, davies_bouldin_score, pairwise_distances
+from sklearn.decomposition import PCA
+import dask.dataframe as dd
+from sklearn.preprocessing import StandardScaler
+from dask import delayed, compute
+from dask.distributed import Client
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 app = Flask(__name__)
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
@@ -322,41 +330,111 @@ def suggestions():
 def home():
     return render_template("app.html")
 
+
+from flask import Blueprint, render_template, current_app
+from flask_caching import Cache
+from sqlalchemy import inspect, text
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, fowlkes_mallows_score
+from sklearn.decomposition import PCA
+import logging
+
+# Initialize the logger
+logger = logging.getLogger(__name__)
+
+# Blueprint and cache setup
+bp = Blueprint('comparison', __name__)
+cache = Cache()
+
+def initialize_clustering(uri, engine):
+    perform_kmeans_clustering(engine)
+    perform_dbscan_clustering(engine)
+    perform_agglomerative_clustering(engine)
+
 @cache.cached(timeout=300)
 @bp.route('/comparison', methods=['GET', 'POST'])
 def comparison():
     with current_app.app_context():
+        # Get the connection string from the SQLAlchemy engine
         engine = db.engine
-        
-        # Query to fetch relevant data only once
+        connection_string = engine.url.__to_string__(hide_password=False)
+
+        # Inspect the database to check if the table exists
+        inspector = inspect(engine)
+        if 'Spotify' not in inspector.get_table_names():
+            logger.error("Spotify table does not exist.")
+            return "Error: The 'Spotify' table does not exist in the database. Please ensure the database is set up correctly.", 404 
+
         query = """
-            SELECT danceability, energy, kmeans, dbscan, agglomerative
+            SELECT track_id, danceability, energy, kmeans, dbscan, agglomerative
             FROM Spotify
             WHERE kmeans IS NOT NULL OR dbscan IS NOT NULL OR agglomerative IS NOT NULL;
         """
-        df_features = pd.read_sql(query, engine).dropna()
+
+        with engine.connect() as connection:
+            result = connection.execute(text(query))
+            data = result.fetchall()
+            if not data:
+                logger.error("No data available for clustering.")
+                return "Error: No data available for clustering. Please check your database entries.", 404 
+
+        df_features = pd.DataFrame(data, columns=result.keys())
+
+        for col in ['danceability', 'energy', 'kmeans', 'dbscan', 'agglomerative']:
+            df_features[col] = pd.to_numeric(df_features[col], errors='coerce')
+
+        df_features = df_features.dropna()
+
+        if df_features.empty:
+            logger.warning("No valid data left for clustering after dropping NaNs.")
+            return "Error: Not enough valid data for clustering. Ensure that your dataset contains valid entries.", 400
+
+        # Log data shape after cleaning
+        logger.info(f"Data shape after dropping NaNs: {df_features.shape}")
+
+        # Sample 10% of the dataset
+        df_features = df_features.sample(frac=0.1, random_state=1)
+        logger.info(f"Data shape after sampling 10%: {df_features.shape}")
+
+        # Standardize the data before applying PCA
+        scaler = StandardScaler()
+        scaled_features = scaler.fit_transform(df_features[['danceability', 'energy']])
+        logger.info(f"Scaled features shape: {scaled_features.shape}")
+
+        # Apply PCA to reduce dimensionality
+        try:
+            pca_features = apply_pca(pd.DataFrame(scaled_features), n_components=2)
+            logger.info(f"PCA output shape: {pca_features.shape}")
+        except Exception as e:
+            logger.error(f"Error during PCA: {e}")
+            return "Error: PCA failed. Please check your data.", 500
 
         # Reshape data to count clusters by algorithm
-        cluster_counts = df_features.melt(
+        df_melted = df_features.melt(
             id_vars=['danceability', 'energy'],
             value_vars=['kmeans', 'dbscan', 'agglomerative'],
             var_name='algorithm',
             value_name='cluster_group'
-        ).groupby(['algorithm', 'cluster_group']).size().reset_index(name='count')
+        ).groupby(['algorithm', 'cluster_group']).size().reset_index()
 
-        # Create ProcessPoolExecutor for parallel tasks
-        with ProcessPoolExecutor() as executor:
-            # Submit tasks for graph generation and metrics calculation
-            futures = {
-                'kmeans_graph': executor.submit(generate_kmeans_graph, df_features[['danceability', 'energy', 'kmeans']]),
-                'dbscan_graph': executor.submit(generate_dbscan_graph, df_features[['danceability', 'energy', 'dbscan']]),
-                'agglomerative_graph': executor.submit(generate_agglomerative_graph, df_features[['danceability', 'energy', 'agglomerative']]),
-                'metrics': executor.submit(calculate_metrics, df_features)
-            }
+        df_melted.columns = ['algorithm', 'cluster_group', 'count']
+        logger.info(f"Cluster count dataframe: {df_melted.head()}")
 
-            # Retrieve results from futures
-            graphs = {name: futures[name].result() for name in ['kmeans_graph', 'dbscan_graph', 'agglomerative_graph']}
-            metrics = futures['metrics'].result()
+        # Generate graphs and calculate metrics using PCA features
+        try:
+            kmeans_graph = generate_kmeans_graph(pd.DataFrame(pca_features, columns=['pca1', 'pca2']), df_features['kmeans'])
+            dbscan_graph = generate_dbscan_graph(pd.DataFrame(pca_features, columns=['pca1', 'pca2']), df_features['dbscan'])
+            agglomerative_graph = generate_agglomerative_graph(pd.DataFrame(pca_features, columns=['pca1', 'pca2']), df_features['agglomerative'])
+
+            logger.info("Graphs generated successfully.")
+
+            metrics = calculate_metrics(df_features)
+            logger.info(f"Metrics calculated: {metrics}")
+        except Exception as e:
+            logger.error(f"Error during graph generation or metrics calculation: {e}")
+            return "Error: There was an issue generating the graphs or calculating the metrics. Please check your data.", 500
 
         # Set paths for graph images
         graph_paths = {
@@ -367,14 +445,13 @@ def comparison():
 
         # Render the template with the calculated metrics and graph paths
         return render_template('comparison.html',
-                               kmeans_counts=cluster_counts[cluster_counts['algorithm'] == 'kmeans'][['cluster_group', 'count']].to_html(classes='table table-striped', index=False),
-                               dbscan_counts=cluster_counts[cluster_counts['algorithm'] == 'dbscan'][['cluster_group', 'count']].to_html(classes='table table-striped', index=False),
-                               agglomerative_counts=cluster_counts[cluster_counts['algorithm'] == 'agglomerative'][['cluster_group', 'count']].to_html(classes='table table-striped', index=False),
+                               kmeans_counts=df_melted[df_melted['algorithm'] == 'kmeans'][['cluster_group', 'count']].to_html(classes='table table-striped', index=False),
+                               dbscan_counts=df_melted[df_melted['algorithm'] == 'dbscan'][['cluster_group', 'count']].to_html(classes='table table-striped', index=False),
+                               agglomerative_counts=df_melted[df_melted['algorithm'] == 'agglomerative'][['cluster_group', 'count']].to_html(classes='table table-striped', index=False),
                                kmeans_graph=graph_paths['kmeans'],
                                dbscan_graph=graph_paths['dbscan'],
                                agglomerative_graph=graph_paths['agglomerative'],
                                metrics=metrics)
-
 
 app.register_blueprint(bp)
 
@@ -384,74 +461,72 @@ def initialize_clustering(uri, engine):
     perform_agglomerative_clustering(engine)
 
 def calculate_metrics(df):
-    """Calculates evaluation metrics for clustering results."""
-    df.dropna(subset=['kmeans', 'dbscan', 'agglomerative'], how='all', inplace=True)
-
     metrics = {}
+    logger.info("Starting metrics calculation.")
 
-    # Calculate metrics for each clustering algorithm
     for algo in ['kmeans', 'dbscan', 'agglomerative']:
         if algo in df.columns:
             features = df[['danceability', 'energy']]
             labels = df[algo]
+            logger.info(f"Calculating metrics for {algo} with labels: {labels.unique()}")
+
             if has_enough_data(labels):
                 silhouette = calculate_silhouette_score(features, labels)
                 davies_bouldin = calculate_davies_bouldin_score(features, labels)
-                dunn = calculate_dunn_index(features, labels)
+                calinski_harabasz = calculate_calinski_harabasz_index(features, labels)
+                wcss = calculate_wcss(features, labels)
+                fmi = calculate_fmi(df['track_id'], labels)
 
                 metrics[f'{algo.capitalize()} Silhouette Score'] = silhouette
                 metrics[f'{algo.capitalize()} Davies-Bouldin Index'] = davies_bouldin
-                metrics[f'{algo.capitalize()} Dunn Index'] = dunn
+                metrics[f'{algo.capitalize()} Calinski-Harabasz Index'] = calinski_harabasz
+                metrics[f'{algo.capitalize()} WCSS'] = wcss
+                metrics[f'{algo.capitalize()} Fowlkes-Mallows Index'] = fmi
+
+                logger.info(f"{algo.capitalize()} metrics: Silhouette={silhouette}, Davies-Bouldin={davies_bouldin}, Calinski-Harabasz={calinski_harabasz}, WCSS={wcss}, FMI={fmi}")
             else:
                 metrics[f'{algo.capitalize()} Metrics'] = 'Not enough data'
+                logger.warning(f"Not enough data for {algo.capitalize()} metrics.")
 
     return metrics
 
-# Check if there's enough data for metric calculation
+# Supporting functions for metrics
 def has_enough_data(labels):
     """Checks if the cluster labels have enough data for metric calculation."""
     return not labels.isnull().all() and len(labels.unique()) > 1
 
-# Calculate Silhouette Score
 def calculate_silhouette_score(data, labels):
     """Calculates the Silhouette Score."""
     return silhouette_score(data, labels) if has_enough_data(labels) else None
 
-# Calculate Davies-Bouldin Index
 def calculate_davies_bouldin_score(data, labels):
     """Calculates the Davies-Bouldin Index."""
     return davies_bouldin_score(data, labels) if has_enough_data(labels) else None
 
-# Optimized Dunn Index calculation
-def calculate_dunn_index(data, labels):
-    """Calculates the Dunn Index."""
-    unique_labels = np.unique(labels)
-    
-    if len(unique_labels) < 2:
-        return None
+def calculate_calinski_harabasz_index(data, labels):
+    """Calculates the Calinski-Harabasz Index."""
+    return calinski_harabasz_score(data, labels) if has_enough_data(labels) else None
 
-    # Precompute pairwise distances for all data points
-    distances = pairwise_distances(data, data)
+def calculate_wcss(data, labels):
+    """Calculates Within-Cluster Sum of Squares (WCSS) for the clustering."""
+    centroids = np.array([data[labels == i].mean(axis=0) for i in np.unique(labels)])
+    distances = np.sum([np.sum((data[labels == i] - centroids[i]) ** 2) for i in np.unique(labels)])
+    return distances if has_enough_data(labels) else None
 
-    # Compute intra-cluster distances
-    intra_cluster_distances = [
-        np.max(distances[np.ix_(labels == label, labels == label)])
-        for label in unique_labels
-    ]
+def calculate_fmi(true_labels, predicted_labels):
+    """Calculates the Fowlkes-Mallows Index."""
+    return fowlkes_mallows_score(true_labels, predicted_labels) if has_enough_data(predicted_labels) else None
 
-    # Compute inter-cluster distances
-    inter_cluster_distances = [
-        np.min(distances[np.ix_(labels == i, labels == j)])
-        for i in unique_labels for j in unique_labels if i != j
-    ]
+def apply_pca(data, n_components=None):
+    if n_components is None or n_components > min(data.shape):
+        n_components = min(data.shape)
 
-    # Avoid division by zero
-    max_intra = np.max(intra_cluster_distances)
-    if max_intra == 0:
-        return None
-
-    return np.min(inter_cluster_distances) / max_intra
-
-def pairwise_distances(X1, X2):
-    """Calculate the pairwise distance between two sets of points."""
-    return cdist(X1, X2, metric='euclidean')
+    logger.info(f"Applying PCA with {n_components} components on data with shape {data.shape}.")
+    pca = PCA(n_components=n_components)
+    try:
+        result = pca.fit_transform(data)
+        logger.info(f"PCA completed successfully. Result shape: {result.shape}")
+        return result
+    except Exception as e:
+        logger.error(f"PCA failed with error: {e}")
+        raise

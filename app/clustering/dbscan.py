@@ -9,6 +9,9 @@ import logging
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import os
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -83,19 +86,18 @@ def perform_dbscan_clustering(engine, eps=1.5, min_samples=5, batch_size=50000):
         logger.info("Completed DBSCAN Clustering.")
 
 
-def generate_dbscan_graph(df):
-    # Log the initial state of the DataFrame for debugging
-    logger.info(f"DataFrame for DBSCAN graph: {df.head()}")
+def generate_dbscan_graph(features, labels):
+    logger.info(f"DataFrame for DBSCAN graph: {features.head()}, Labels: {labels.head()}")
 
-    if df.empty:
+    if features.empty or labels.empty:
         logger.warning("No DBSCAN results found for graphing.")
         return
 
     plt.figure(figsize=(10, 6))
-    plt.scatter(df['danceability'], df['energy'], c=df['dbscan'], cmap='plasma', alpha=0.5)
+    plt.scatter(features['pca1'], features['pca2'], c=labels, cmap='plasma', alpha=0.5)
     plt.title('DBSCAN Clustering')
-    plt.xlabel('Danceability')
-    plt.ylabel('Energy')
+    plt.xlabel('PCA 1')
+    plt.ylabel('PCA 2')
     plt.colorbar(label='Cluster')
 
     graph_dir = 'app/static/graphs/'

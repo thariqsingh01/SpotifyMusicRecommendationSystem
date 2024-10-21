@@ -7,6 +7,9 @@ from app.models import SpotifyData
 import logging
 import matplotlib.pyplot as plt
 import os
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -73,19 +76,18 @@ def perform_agglomerative_clustering(engine, n_clusters=100, batch_size=50000):
     finally:
         logger.info("Completed Agglomerative Clustering.")
 
-def generate_agglomerative_graph(df):
-    # Log the initial state of the DataFrame for debugging
-    logger.info(f"DataFrame for Agglomerative graph: {df.head()}")
+def generate_agglomerative_graph(features, labels):
+    logger.info(f"DataFrame for Agglomerative graph: {features.head()}, Labels: {labels.head()}")
 
-    if df.empty:
+    if features.empty or labels.empty:
         logger.warning("No Agglomerative results found for graphing.")
         return
 
     plt.figure(figsize=(10, 6))
-    plt.scatter(df['danceability'], df['energy'], c=df['agglomerative'], cmap='cividis', alpha=0.5)
+    plt.scatter(features['pca1'], features['pca2'], c=labels, cmap='cividis', alpha=0.5)
     plt.title('Agglomerative Clustering')
-    plt.xlabel('Danceability')
-    plt.ylabel('Energy')
+    plt.xlabel('PCA 1')
+    plt.ylabel('PCA 2')
     plt.colorbar(label='Cluster')
 
     graph_dir = 'app/static/graphs/'
