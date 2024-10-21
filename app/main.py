@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import pairwise_distances
 import mysql.connector
-from sklearn.metrics import silhouette_score, davies_bouldin_score, pairwise_distances
+from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, fowlkes_mallows_score
 from sklearn.decomposition import PCA
 import dask.dataframe as dd
 from sklearn.preprocessing import StandardScaler
@@ -330,24 +330,6 @@ def suggestions():
 def home():
     return render_template("app.html")
 
-
-from flask import Blueprint, render_template, current_app
-from flask_caching import Cache
-from sqlalchemy import inspect, text
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, fowlkes_mallows_score
-from sklearn.decomposition import PCA
-import logging
-
-# Initialize the logger
-logger = logging.getLogger(__name__)
-
-# Blueprint and cache setup
-bp = Blueprint('comparison', __name__)
-cache = Cache()
-
 def initialize_clustering(uri, engine):
     perform_kmeans_clustering(engine)
     perform_dbscan_clustering(engine)
@@ -395,7 +377,7 @@ def comparison():
         logger.info(f"Data shape after dropping NaNs: {df_features.shape}")
 
         # Sample 10% of the dataset
-        df_features = df_features.sample(frac=0.1, random_state=1)
+        df_features = df_features.sample(frac=0.2, random_state=1)
         logger.info(f"Data shape after sampling 10%: {df_features.shape}")
 
         # Standardize the data before applying PCA

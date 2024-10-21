@@ -10,42 +10,47 @@
     <div class="container">
         <h1>Clustering Comparison Results</h1>
 
-        <!-- Section for Evaluation Metrics (Moved to the top) -->
+        <!-- Section for Evaluation Metrics -->
         <div id="metrics">
             <h2>Clustering Evaluation Metrics</h2>
-            
-            <h3>KMeans Metrics</h3>
-            <ul>
-                {% if kmeans_metrics %}
-                    {% for metric, value in kmeans_metrics.items() %}
-                        <li>{{ metric }}: {{ value }}</li>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>KMeans</th>
+                        <th>DBSCAN</th>
+                        <th>Agglomerative</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for metric_name in ['Silhouette Score', 'Davies-Bouldin Index', 'Calinski-Harabasz Index', 'WCSS', 'Fowlkes-Mallows Index'] %}
+                        <tr>
+                            <td>{{ metric_name }}</td>
+                            <td>
+                                {% if metrics['Kmeans ' + metric_name] is not none %}
+                                    {{ metrics['Kmeans ' + metric_name] }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if metrics['Dbscan ' + metric_name] is not none %}
+                                    {{ metrics['Dbscan ' + metric_name] }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if metrics['Agglomerative ' + metric_name] is not none %}
+                                    {{ metrics['Agglomerative ' + metric_name] }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
                     {% endfor %}
-                {% else %}
-                    <p>No metrics found for KMeans clustering.</p>
-                {% endif %}
-            </ul>
-
-            <h3>DBSCAN Metrics</h3>
-            <ul>
-                {% if dbscan_metrics %}
-                    {% for metric, value in dbscan_metrics.items() %}
-                        <li>{{ metric }}: {{ value }}</li>
-                    {% endfor %}
-                {% else %}
-                    <p>No metrics found for DBSCAN clustering.</p>
-                {% endif %}
-            </ul>
-
-            <h3>Agglomerative Metrics</h3>
-            <ul>
-                {% if agglomerative_metrics %}
-                    {% for metric, value in agglomerative_metrics.items() %}
-                        <li>{{ metric }}: {{ value }}</li>
-                    {% endfor %}
-                {% else %}
-                    <p>No metrics found for Agglomerative clustering.</p>
-                {% endif %}
-            </ul>
+                </tbody>
+            </table>
         </div>
 
         <!-- Section for Cluster Count Tables -->
