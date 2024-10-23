@@ -1,6 +1,6 @@
 # models.py
 
-from . import db  # Import db from the current package
+from . import db 
 
 class SpotifyData(db.Model):
     __tablename__ = 'Spotify'

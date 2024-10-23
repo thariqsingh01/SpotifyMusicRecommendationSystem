@@ -34,7 +34,6 @@ app = Flask(__name__)
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 load_dotenv()
 
-# Set up Spotipy with your Spotify API credentials
 client_id = os.getenv('SPOTIFY_CLIENT_ID', 'default_client_id')
 client_secret = os.getenv('SPOTIFY_CLIENT_SECRET', 'default_client_secret')
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
@@ -54,7 +53,6 @@ def get_user_choices(request_data):
     Returns: list: A list of SpotifyData objects representing user-selected songs.
     """
 
-    # Extract track_name and artist_name pairs from request_data
     track_artist_pairs = [(item['track_name'], item['artist_name']) 
                           for item in request_data 
                           if item.get('track_name') and item.get('artist_name')]
@@ -62,7 +60,6 @@ def get_user_choices(request_data):
     if not track_artist_pairs:
         return []
     
-    # Use 'or_' to filter by multiple conditions (track_name and artist_name)
     user_choices = SpotifyData.query.filter(
         or_(
             *[(SpotifyData.track_name == track_name) & (SpotifyData.artist_name == artist_name) 
@@ -114,7 +111,6 @@ def fetch_covers_for_user_choices(user_choices):
     """
     track_ids = [song.track_id for song in user_choices]
     
-    # Fetch covers for all user songs
     covers = []
     for track_id in track_ids:
         cover_url = get_track_cover(sp, track_id)
@@ -124,7 +120,6 @@ def fetch_covers_for_user_choices(user_choices):
     return covers
 
 
-# Modify the generate_recommendations function to include cover images
 def generate_recommendations(user_song, cluster_label_field, limit=10):
     """
     Generates recommendations for the user based on their selected song and assigned cluster label.
@@ -135,16 +130,13 @@ def generate_recommendations(user_song, cluster_label_field, limit=10):
     Returns:
         list: A list of recommended songs with similarity scores and album covers.
     """
-    # Log starting point
     logger.info(f"Starting recommendation generation for user song: {user_song.track_name} by {user_song.artist_name}, "
                 f"KMeans label: {user_song.kmeans}")
 
-    # Query for songs in the same cluster as the user's song, limiting the results
     similar_songs = SpotifyData.query.filter(
         getattr(SpotifyData, cluster_label_field) == getattr(user_song, cluster_label_field)
     ).limit(limit).all()
 
-    # Log the number of similar songs found
     logger.info(f"Number of similar songs found for {cluster_label_field}: {len(similar_songs)}")
     logger.info(f"Cluster label used for filtering: {getattr(user_song, cluster_label_field)}")
 
@@ -154,7 +146,6 @@ def generate_recommendations(user_song, cluster_label_field, limit=10):
 
     recommendations = []
     for song in similar_songs:
-        # Log each song's basic details
         logger.info(f"Song in cluster: {song.track_name} by {song.artist_name}, Features: "
                     f"[{song.danceability}, {song.energy}, {song.acousticness}, {song.valence}]")
 
@@ -175,18 +166,17 @@ def generate_recommendations(user_song, cluster_label_field, limit=10):
     top_recommendations = []
     for song, similarity_score in recommendations[:5]:
         # Fetch the cover image using Spotipy
-        cover_url = get_track_cover(sp, song.track_id)  # Ensure individual track_id is passed here
+        cover_url = get_track_cover(sp, song.track_id) 
         logger.info(f"Fetching cover image for song {song.track_name}...")
 
-        if cover_url:  # Ensure cover_url is not None before proceeding
-            # Append the song, its similarity score, and cover URL to the top recommendations
+        if cover_url:  
             top_recommendations.append({
                 'track_id': song.track_id,
                 'artist_name': song.artist_name,
                 'track_name': song.track_name,
                 'year': song.year,
                 'genre': song.genre,
-                'cover_url': cover_url  # Add cover_url to the recommendation
+                'cover_url': cover_url  
             })
 
     logger.info(f"Top 5 recommendations: {[rec['track_name'] for rec in top_recommendations]}")
@@ -204,12 +194,10 @@ def search():
             (SpotifyData.year.ilike(f"%{query}%")) |
             (SpotifyData.genre.ilike(f"%{query}%"))
         ).order_by(SpotifyData.popularity.desc()).limit(20).all()
-        logger.info(f'Number of results found: {len(results)}')  # Log number of results
+        logger.info(f'Number of results found: {len(results)}') 
 
     if not results:
         logger.info('No results matched the query.')
-
-    # Render only the table rows for the HTMX request
     return render_template('search.html', results=results)
 
 @bp.route('/recommendations', methods=['POST'])
@@ -239,9 +227,9 @@ def recommendations():
         logger.info(f'KMeans label: {user_song.kmeans}, DBSCAN label: {user_song.dbscan}, Agglomerative label: {user_song.agglomerative}')
 
         # Retrieve cluster labels for the selected song
-        kmeans_cluster_label = user_song.kmeans  # KMeans label
-        dbscan_cluster_label = user_song.dbscan  # DBSCAN label
-        agglomerative_cluster_label = user_song.agglomerative  # Agglomerative label
+        kmeans_cluster_label = user_song.kmeans  
+        dbscan_cluster_label = user_song.dbscan  
+        agglomerative_cluster_label = user_song.agglomerative  
 
         # Validate the cluster labels
         if kmeans_cluster_label is None or dbscan_cluster_label is None or agglomerative_cluster_label is None:
@@ -269,20 +257,18 @@ def recommendations():
 
 @bp.route('/suggestions', methods=['POST'])
 def suggestions():
-    data = request.get_json()  # Parse JSON data from the request body
+    data = request.get_json()  
     track_name = data.get('track_name')
     artist_name = data.get('artist_name')
 
     logging.info(f"Received request for suggestions: {data}")
 
     try:
-        # First, try to find the selected song
         selected_song = SpotifyData.query.filter_by(track_name=track_name, artist_name=artist_name).first()
 
         if not selected_song:
             logging.warning(f"No matching song found for track: {track_name}, artist: {artist_name}")
 
-            # If no matching song is found, suggest the next best song from the database
             next_best_song = SpotifyData.query.order_by(SpotifyData.popularity.desc()).first()
 
             if not next_best_song:
@@ -291,9 +277,8 @@ def suggestions():
             
             logging.info(f"Suggesting next best song: {next_best_song.track_name} by {next_best_song.artist_name}")
 
-            # Use the next best song's cluster to find similar songs
             similar_songs = SpotifyData.query.filter(
-                SpotifyData.kmeans == next_best_song.kmeans  # Adjust according to your logic
+                SpotifyData.kmeans == next_best_song.kmeans 
             ).limit(10).all()
 
         else:
@@ -301,14 +286,13 @@ def suggestions():
 
             # Use the selected song's cluster to find similar songs
             similar_songs = SpotifyData.query.filter(
-                SpotifyData.kmeans == selected_song.kmeans  # You can switch to dbscan/agglomerative if needed
+                SpotifyData.kmeans == selected_song.kmeans  
             ).limit(10).all()
 
         if not similar_songs:
             logging.warning("No similar songs found for the selected or fallback song.")
             return jsonify({'error': 'No similar songs found'}), 404
 
-        # Prepare the response data with relevant details (track name, artist, genre, etc.)
         suggestions_list = [{
             'track_name': song.track_name,
             'artist_name': song.artist_name,
@@ -339,11 +323,9 @@ def initialize_clustering(uri, engine):
 @bp.route('/comparison', methods=['GET', 'POST'])
 def comparison():
     with current_app.app_context():
-        # Get the connection string from the SQLAlchemy engine
         engine = db.engine
         connection_string = engine.url.__to_string__(hide_password=False)
 
-        # Inspect the database to check if the table exists
         inspector = inspect(engine)
         if 'Spotify' not in inspector.get_table_names():
             logger.error("Spotify table does not exist.")
@@ -373,10 +355,8 @@ def comparison():
             logger.warning("No valid data left for clustering after dropping NaNs.")
             return "Error: Not enough valid data for clustering. Ensure that your dataset contains valid entries.", 400
 
-        # Log data shape after cleaning
         logger.info(f"Data shape after dropping NaNs: {df_features.shape}")
 
-        # Sample 10% of the dataset
         df_features = df_features.sample(frac=0.2, random_state=1)
         logger.info(f"Data shape after sampling 10%: {df_features.shape}")
 
@@ -418,14 +398,12 @@ def comparison():
             logger.error(f"Error during graph generation or metrics calculation: {e}")
             return "Error: There was an issue generating the graphs or calculating the metrics. Please check your data.", 500
 
-        # Set paths for graph images
         graph_paths = {
             'kmeans': '/static/graphs/kmeans_results.png',
             'dbscan': '/static/graphs/dbscan_results.png',
             'agglomerative': '/static/graphs/agglomerative_results.png'
         }
 
-        # Render the template with the calculated metrics and graph paths
         return render_template('comparison.html',
                                kmeans_counts=df_melted[df_melted['algorithm'] == 'kmeans'][['cluster_group', 'count']].to_html(classes='table table-striped', index=False),
                                dbscan_counts=df_melted[df_melted['algorithm'] == 'dbscan'][['cluster_group', 'count']].to_html(classes='table table-striped', index=False),
@@ -436,11 +414,6 @@ def comparison():
                                metrics=metrics)
 
 app.register_blueprint(bp)
-
-def initialize_clustering(uri, engine):
-    perform_kmeans_clustering(engine)
-    perform_dbscan_clustering(engine)
-    perform_agglomerative_clustering(engine)
 
 def calculate_metrics(df):
     metrics = {}
@@ -472,7 +445,7 @@ def calculate_metrics(df):
 
     return metrics
 
-# Supporting functions for metrics
+#Metric Calculation Functions
 def has_enough_data(labels):
     """Checks if the cluster labels have enough data for metric calculation."""
     return not labels.isnull().all() and len(labels.unique()) > 1

@@ -27,12 +27,9 @@ def perform_kmeans_clustering(engine, n_clusters=100, batch_size=50000):
             return
 
         # Retrieve data from Spotify table using Pandas
-        #df = pd.read_sql(db.session.query(SpotifyData.track_id, SpotifyData.danceability, 
-        #                                   SpotifyData.energy, SpotifyData.tempo, 
-        #                                   SpotifyData.valence).statement, db.session.engine)
         df = pd.read_sql(
             "SELECT track_id, danceability, energy, acousticness, valence FROM Spotify",
-            engine  # Use the passed engine here
+            engine 
         )
 
         if df.empty:
@@ -42,7 +39,7 @@ def perform_kmeans_clustering(engine, n_clusters=100, batch_size=50000):
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
         total_rows = len(df)
-        # Scale features
+        # Normalize the features
         scaler = StandardScaler()
         df[['danceability', 'energy', 'acousticness', 'valence']] = scaler.fit_transform(df[['danceability', 'energy', 'acousticness', 'valence']])
         logger.info(f"Data scaled. Sample: {df[['danceability', 'energy', 'acousticness', 'valence']].head()}")
@@ -55,7 +52,7 @@ def perform_kmeans_clustering(engine, n_clusters=100, batch_size=50000):
             # Perform KMeans clustering on the batch
             kmeans = KMeans(n_clusters=n_clusters, random_state=42)
             labels = kmeans.fit_predict(batch[['danceability', 'energy', 'acousticness', 'valence']])
-            batch['kmeans'] = labels  # Change here to use 'kmeans'
+            batch['kmeans'] = labels 
 
             # Bulk update using SQLAlchemy
             session = db.session
@@ -64,7 +61,7 @@ def perform_kmeans_clustering(engine, n_clusters=100, batch_size=50000):
             for index, row in batch.iterrows():
                 updates.append({
                     'track_id': row['track_id'],
-                    'kmeans': row['kmeans']  # Change here to use 'kmeans'
+                    'kmeans': row['kmeans']  
                 })
 
             if updates:

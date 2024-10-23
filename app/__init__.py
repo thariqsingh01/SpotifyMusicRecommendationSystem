@@ -8,7 +8,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-db = SQLAlchemy()  # Define db here, but we won't initialize it yet
+db = SQLAlchemy() 
 def log_registered_routes(app):
     logging.info("Registered Routes:")
     for rule in app.url_map.iter_rules():
@@ -29,19 +29,16 @@ def create_app(uri=None):
     # Create the engine
     engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], echo=False)
 
-    db.init_app(app)  # Initialize db with the app
+    db.init_app(app)  
 
     with app.app_context():
         # Import the models here to avoid circular imports
         from .models import SpotifyData  
-
-        # Optional: Create tables if not exist
         db.create_all()
 
-        # Register the main blueprint here
         from .main import bp as main_bp
         app.register_blueprint(main_bp)
 
-    return app, engine  # Return both app and engine
+    return app, engine 
 
     

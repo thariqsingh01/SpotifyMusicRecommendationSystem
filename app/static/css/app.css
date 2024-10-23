@@ -5,7 +5,6 @@ body {
   font-family: Arial, sans-serif;
 }
 
-/* Navbar */
 .navbar {
   list-style-type: none;
   margin: 0;
@@ -84,12 +83,10 @@ body {
   }
 }
 
-/* Spacer */
 .spacer {
   height: 4em;
 }
 
-/* Search Section */
 .search {
   text-align: center;
   padding: 20px;
@@ -122,7 +119,6 @@ body {
   background-color: #555;
 }
 
-/* Scrollable container for tables */
 .search_table-container,
 .suggestions_table,
 #suggesions-table {
@@ -131,17 +127,16 @@ body {
   overflow-y: auto;
   width: 90%;
   margin: 0 auto;
-  margin-top: 20px; /* Add space above tables */
+  margin-top: 20px; 
 }
 
 .choices_table{
   overflow-y: auto;
   width: 90%;
   margin: 0 auto;
-  margin-top: 20px; /* Add space above tables */
+  margin-top: 20px; 
 }
 
-/* Table styles */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -156,9 +151,9 @@ table th, table td {
 table th {
   background-color: #333;
   color: white;
-  position: sticky; /* Make header sticky */
-  top: 0; /* Position it at the top of the scrolling container */
-  z-index: 1; /* Ensure it stays above other content */
+  position: sticky; 
+  top: 0; 
+  z-index: 1; 
 }
 
 table tr:nth-child(even) {
@@ -174,8 +169,6 @@ table tr:hover {
   color: white;
 }
 
-
-/* Equal column widths for all tables */
 table th:nth-child(1),
 table td:nth-child(1) {
   width: 25%;
@@ -201,14 +194,12 @@ table td:nth-child(5) {
   width: 15%;
 }
 
-/* Bin icon styling */
 .bin-icon {
   cursor: pointer;
   color: red;
   font-size: 1.2em;
 }
 
-/* Heading */
 h2 {
   text-align: center;
   margin-top: 20px;

@@ -3,12 +3,10 @@ body {
   font-family: Arial, sans-serif;
 }
 
-/* Container styling */
 .container {
   padding: 20px;
 }
 
-/* Heading */
 h1 {
   text-align: center;
   font-size: 2em;
@@ -22,14 +20,12 @@ h2 {
   color: #333;
 }
 
-/* Responsive table */
 .table-responsive {
   margin: 20px auto;
-  overflow-x: auto; /* Allow horizontal scrolling */
-  max-width: 90%; /* Responsive width */
+  overflow-x: auto; 
+  max-width: 90%; 
 }
 
-/* General table styling */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -54,19 +50,17 @@ tr:hover {
   background-color: #f1f1f1;
 }
 
-/* Graphs section */
 #graphs {
   margin-top: 40px;
   text-align: center;
 }
 
 #graphs img {
-  max-width: 80%; /* Responsive image size */
+  max-width: 80%; 
   height: auto;
-  margin: 10px 0; /* Add some spacing between images */
+  margin: 10px 0; 
 }
 
-/* Messages */
 p {
   text-align: center;
   color: #666;

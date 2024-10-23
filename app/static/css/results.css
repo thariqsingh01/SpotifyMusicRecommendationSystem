@@ -1,11 +1,9 @@
-/* General Body Styling */
 body {
     margin: 0;
     font-family: Arial, sans-serif;
-    background-color: #f9f9f9; /* Added background color for consistency */
+    background-color: #f9f9f9; 
 }
 
-/* Navbar */
 .navbar {
     list-style-type: none;
     margin: 0;
@@ -65,7 +63,6 @@ body {
     font-size: 1.5rem;
 }
 
-/* Media Queries for Navbar */
 @media screen and (max-width: 500px) {
     .navbar {
         flex-direction: column;
@@ -85,72 +82,63 @@ body {
     }
 }
 
-/* Spacer for Navbar */
 .recommendations {
-    margin-top: 80px; /* Prevents overlap with the navbar */
+    margin-top: 80px; 
     padding: 20px;
-    background-color: #f9f9f9; /* Same background color as app.css */
+    background-color: #f9f9f9; 
 }
 
-/* Recommendation Table */
 .recommendation-table {
     display: flex;
-    flex-direction: column; /* Keeps rows separate */
-    gap: 20px; /* Spacing between rows */
-    width: 100%; /* Full page width */
+    flex-direction: column;
+    gap: 20px; 
+    width: 100%;
     margin: 0 auto; 
 }
 
-/* Recommendation Row */
 .recommendation-row {
     display: flex;
-    flex-wrap: wrap; /* Allows items to wrap if they don’t fit in one row */
-    gap: 20px; /* Space between each recommendation item */
-    justify-content: space-between; /* Evenly distribute the items */
-    width: 100%; /* Ensure the row spans the full page width */
+    flex-wrap: wrap; 
+    gap: 20px; 
+    justify-content: space-between; 
+    width: 100%; 
 }
 
-/* Recommendation Item */
 .recommendation-item {
-    flex: 1 1 150px; /* Ensures each item is flexible but has a minimum width */
-    max-width: 200px; /* Limits the width of each item */
+    flex: 1 1 150px; 
+    max-width: 200px; 
     text-align: center;
     margin-bottom: 20px;
-    background-color: white; /* White background for clarity */
-    border-radius: 5px; /* Rounded corners */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-    padding: 10px; /* Space inside the box */
+    background-color: white; 
+    border-radius: 5px; 
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); 
+    padding: 10px; 
 }
 
-/* Cover Image */
 .recommendation-item img {
-    width: 100%; /* Full width of the container */
-    height: auto; /* Maintain aspect ratio */
-    border-radius: 5px; /* Rounded corners for the image */
-    margin-bottom: 10px; /* Spacing between image and text */
+    width: 100%; 
+    height: auto; 
+    border-radius: 5px; 
+    margin-bottom: 10px; 
 }
 
-/* Track Name */
 .track-name {
     font-weight: bold;
     margin-top: 5px;
-    color: #333; /* Darker color for the track name */
+    color: #333; 
 }
 
-/* Artist Name */
 .artist-name {
-    color: #666; /* Lighter color for artist names */
+    color: #666;
     margin-top: 2px;
 }
 
-/* No Recommendations Message */
 .no-recommendations {
     text-align: center;
     color: #888;
     padding: 20px;
 }
 
-/* Button Styling */
 .button {
     background-color: #333;
     color: white;
@@ -161,19 +149,17 @@ body {
 }
 
 .button:hover {
-    background-color: #555; /* Hover effect */
+    background-color: #555; 
 }
 
-/* Responsive Design for Medium Screens */
 @media screen and (max-width: 768px) {
     .recommendation-item {
-        width: 45%; /* Two items per row on medium screens */
+        width: 45%; 
     }
 }
 
-/* Responsive Design for Small Screens */
 @media screen and (max-width: 500px) {
     .recommendation-item {
-        width: 100%; /* Full width on small screens */
+        width: 100%;
     }
 }

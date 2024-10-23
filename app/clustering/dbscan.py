@@ -37,7 +37,7 @@ def perform_dbscan_clustering(engine, eps=1.5, min_samples=5, batch_size=50000):
 
         logger.info(f"Data retrieved: {len(df)} rows from Spotify table.")
 
-        # Scale features
+        # Nomralize the features
         scaler = StandardScaler()
         df[['danceability', 'energy', 'acousticness', 'valence']] = scaler.fit_transform(df[['danceability', 'energy', 'acousticness', 'valence']])
         logger.info(f"Data scaled. Sample: {df[['danceability', 'energy', 'acousticness', 'valence']].head()}")
@@ -64,7 +64,7 @@ def perform_dbscan_clustering(engine, eps=1.5, min_samples=5, batch_size=50000):
             updates = []
 
             for index, row in batch.iterrows():
-                if row['dbscan'] != -1:  # Ignore noise (-1) if necessary
+                if row['dbscan'] != -1:  
                     updates.append({
                         'track_id': row['track_id'],
                         'dbscan': row['dbscan']

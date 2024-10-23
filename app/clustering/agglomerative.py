@@ -25,12 +25,9 @@ def perform_agglomerative_clustering(engine, n_clusters=100, batch_size=50000):
             return
 
         # Retrieve data from Spotify table using Pandas
-        #df = pd.read_sql(db.session.query(SpotifyData.track_id, SpotifyData.danceability, 
-        #                                   SpotifyData.energy, SpotifyData.tempo, 
-        #                                   SpotifyData.valence).statement, db.session.engine)
         df = pd.read_sql(
             "SELECT track_id, danceability, energy, acousticness, valence FROM Spotify",
-            engine  # Use the passed engine here
+            engine 
         )
 
 
