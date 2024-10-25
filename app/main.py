@@ -431,15 +431,13 @@ def calculate_metrics(df):
                 davies_bouldin = calculate_davies_bouldin_score(features, labels)
                 calinski_harabasz = calculate_calinski_harabasz_index(features, labels)
                 wcss = calculate_wcss(features, labels)
-                fmi = calculate_fmi(df['track_id'], labels)
 
                 metrics[f'{algo.capitalize()} Silhouette Score'] = silhouette
                 metrics[f'{algo.capitalize()} Davies-Bouldin Index'] = davies_bouldin
                 metrics[f'{algo.capitalize()} Calinski-Harabasz Index'] = calinski_harabasz
                 metrics[f'{algo.capitalize()} WCSS'] = wcss
-                metrics[f'{algo.capitalize()} Fowlkes-Mallows Index'] = fmi
 
-                logger.info(f"{algo.capitalize()} metrics: Silhouette={silhouette}, Davies-Bouldin={davies_bouldin}, Calinski-Harabasz={calinski_harabasz}, WCSS={wcss}, FMI={fmi}")
+                logger.info(f"{algo.capitalize()} metrics: Silhouette={silhouette}, Davies-Bouldin={davies_bouldin}, Calinski-Harabasz={calinski_harabasz}, WCSS={wcss}")
             else:
                 metrics[f'{algo.capitalize()} Metrics'] = 'Not enough data'
                 logger.warning(f"Not enough data for {algo.capitalize()} metrics.")
@@ -468,10 +466,6 @@ def calculate_wcss(data, labels):
     centroids = np.array([data[labels == i].mean(axis=0) for i in np.unique(labels)])
     distances = np.sum([np.sum((data[labels == i] - centroids[i]) ** 2) for i in np.unique(labels)])
     return distances if has_enough_data(labels) else None
-
-def calculate_fmi(true_labels, predicted_labels):
-    """Calculates the Fowlkes-Mallows Index."""
-    return fowlkes_mallows_score(true_labels, predicted_labels) if has_enough_data(predicted_labels) else None
 
 def apply_pca(data, n_components=None):
     if n_components is None or n_components > min(data.shape):

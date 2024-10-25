@@ -83,8 +83,8 @@ def generate_agglomerative_graph(features, labels):
     plt.figure(figsize=(10, 6))
     plt.scatter(features['pca1'], features['pca2'], c=labels, cmap='cividis', alpha=0.5)
     plt.title('Agglomerative Clustering')
-    plt.xlabel('x')
-    plt.ylabel('y')
+    plt.xlabel('PCA 1')
+    plt.ylabel('PCA 2')
     plt.colorbar(label='Cluster')
 
     graph_dir = 'app/static/graphs/'
