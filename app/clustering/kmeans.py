@@ -90,8 +90,8 @@ def generate_kmeans_graph(features, labels):
     plt.figure(figsize=(10, 6))
     plt.scatter(features['pca1'], features['pca2'], c=labels, cmap='viridis', alpha=0.5)
     plt.title('KMeans Clustering')
-    plt.xlabel('PCA 1')
-    plt.ylabel('PCA 2')
+    plt.xlabel('x')
+    plt.ylabel('y')
     plt.colorbar(label='Cluster')
 
     graph_dir = 'app/static/graphs/'

@@ -415,6 +415,7 @@ def comparison():
 
 app.register_blueprint(bp)
 
+
 def calculate_metrics(df):
     metrics = {}
     logger.info("Starting metrics calculation.")
