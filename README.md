@@ -6,10 +6,10 @@ This is a Flask web application done primarily in Python. HTML and CSS was used 
 In order to run the system:
 
 Go to your command prompt.<br/>
-Change directory to where the project is located.<br/>
-Type "python run.py" and press enter.<br/>
-The system should be running as localhost on your default web browser.<br/>
-You can copy the web address from the terminal in your IDE.<br/>
+&emsp;Change directory to where the project is located.<br/>
+&emsp;Type "python run.py" and press enter.<br/>
+&emsp;The system should be running as localhost on your default web browser.<br/>
+&emsp;You can copy the web address from the terminal in your IDE.<br/>
 
 Below is a list of all the pages in the system and what they do:<br/>
 
