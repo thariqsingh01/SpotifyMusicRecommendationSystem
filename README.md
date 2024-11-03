@@ -1,4 +1,7 @@
-This research is a comparison of 3 clustering algorithms - K-means, DBSCAN and Agglomerative. We are comparing these algorithms in regards to the clustering of music and then comparing which algorithm recommending the best music. The dataset used in this research is from Spotify. It consists of over 1 million songs from 2000-2022 with numerous details about each song(song name, artist, tempo, energy, popularity, valence, etc). This is a Flask web application done primarily in Python. HTML and CSS was used for the aesthetics. HTML and Javascript was used to make the program interactive. Numerous libraries such as numpy, pandas, sqlalchmey and scikit-learn was used for the functionality of the system
+This research is a comparison of 3 clustering algorithms - K-means, DBSCAN and Agglomerative. <br/>
+We are comparing these algorithms in regards to the clustering of music and then comparing which algorithm recommending the best music. <br/>
+The dataset used in this research is from Spotify. It consists of over 1 million songs from 2000-2022 with numerous details about each song(song name, artist, tempo, energy, popularity, valence, etc). <br/>
+This is a Flask web application done primarily in Python. HTML and CSS was used for the aesthetics. HTML and Javascript was used to make the program interactive. Numerous libraries such as numpy, pandas, sqlalchmey and scikit-learn was used for the functionality of the system<br/>
 
 In order to run the system:
 
