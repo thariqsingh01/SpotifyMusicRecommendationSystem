@@ -14,7 +14,7 @@ You can copy the web address from the terminal in your IDE.<br/>
 Below is a list of all the pages in the system and what they do:<br/>
 
 /app : app folder with system files inside<br/>
-&ensp;/clustering : Folder with clustering files<br/>
+&emsp;/clustering : Folder with clustering files<br/>
 init.py : User to initialize a python package<br/>
 kmeans.py : file with the required code for kmeans clustering<br/>
 dbscan.py : file with the required code for dbscan clustering<br/>
