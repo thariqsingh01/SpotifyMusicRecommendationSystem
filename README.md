@@ -15,22 +15,22 @@ Below is a list of all the pages in the system and what they do:<br/>
 
 /app : app folder with system files inside<br/>
 &emsp;/clustering : Folder with clustering files<br/>
-init.py : User to initialize a python package<br/>
-kmeans.py : file with the required code for kmeans clustering<br/>
-dbscan.py : file with the required code for dbscan clustering<br/>
-agglomerative.py : file with the required code for agglomerative clustering<br/>
-/static : Folder with CSS files and images<br/>
-/css : Folder with CSS files<br/>
-app.css : css for main file<br/>
-comparison.css : css for comparison page(page used to compare the algorithms)<br/>
-results/css : css for results page(page where recommendations are displayed)<br/>
-/graphs : Folder with graphs used to compare the clustering algorithms<br/>
-images : Folder with images used in system<br/>
-/templates : Folder with HTML files<br/>
-app.html : HTML for main page<br/>
-comparison.html : HTML for page used to compare algorithms<br/>
-results.html : HTML for page with recommendations from each algorithm<br/>
-search.html : HTML for search table of app.html<br/>
+&emsp;&emsp;init.py : User to initialize a python package<br/>
+&emsp;&emsp;kmeans.py : file with the required code for kmeans clustering<br/>
+&emsp;&emsp;dbscan.py : file with the required code for dbscan clustering<br/>
+&emsp;&emsp;agglomerative.py : file with the required code for agglomerative clustering<br/>
+&emsp;/static : Folder with CSS files and images<br/>
+&emsp;&emsp;/css : Folder with CSS files<br/>
+&emsp;&emsp;&emsp;app.css : css for main file<br/>
+&emsp;&emsp;&emsp;comparison.css : css for comparison page(page used to compare the algorithms)<br/>
+&emsp;&emsp;&emsp;results/css : css for results page(page where recommendations are displayed)<br/>
+&emsp;&emsp;/graphs : Folder with graphs used to compare the clustering algorithms<br/>
+&emsp;&emsp;/images : Folder with images used in system<br/>
+&emsp;/templates : Folder with HTML files<br/>
+&emsp;&emsp;app.html : HTML for main page<br/>
+&emsp;&emsp;comparison.html : HTML for page used to compare algorithms<br/>
+&emsp;&emsp;results.html : HTML for page with recommendations from each algorithm<br/>
+&emsp;&emsp;search.html : HTML for search table of app.html<br/>
 init.py : Used to initialize a Python package<br/>
 main.py : Entry point of the system. Used as the main file and to direct to other files for the required functionality<br/>
 models.py : Database models are defined here<br/>
